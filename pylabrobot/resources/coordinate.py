@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -46,3 +47,6 @@ class Coordinate:
 
   def vector(self) -> list[float]:
     return [self.x, self.y, self.z]
+
+  def __iter__(self):
+    return iter((self.x, self.y, self.z))

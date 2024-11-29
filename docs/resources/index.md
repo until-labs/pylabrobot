@@ -35,8 +35,7 @@ Resource
 │   ├── TipRack
 │   └── TubeRack
 ├── Lid
-├── PlateAdapter
-└── MFXModule
+└── PlateAdapter
 ```
 
 See more detailed documentatino below (WIP).
@@ -48,6 +47,7 @@ containers
 itemized_resource
 plates
 plate_carriers
+mfx
 ```
 
 ## Library
@@ -74,6 +74,7 @@ library/corning_costar
 library/eppendorf
 library/falcon
 library/ml_star
+library/nest
 library/opentrons
 library/porvair
 library/revvity

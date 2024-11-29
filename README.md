@@ -3,9 +3,9 @@
 </div>
 
 <div style="text-align: center" align="center">
-<a href="https://docs.pylabrobot.org"><strong>Docs</strong></a> | 
-<a href="https://discuss.pylabrobot.org"><strong>Forum</strong></a> | 
-<a href="https://docs.pylabrobot.org/installation.html"><strong>Installation</strong></a> | 
+<a href="https://docs.pylabrobot.org"><strong>Docs</strong></a> |
+<a href="https://discuss.pylabrobot.org"><strong>Forum</strong></a> |
+<a href="https://docs.pylabrobot.org/installation.html"><strong>Installation</strong></a> |
 <a href="https://docs.pylabrobot.org/basic.html"><strong>Getting started</strong></a>
 </div>
 
@@ -83,7 +83,7 @@ data = await pr.read_luminescence()
 
 For Cytation5, use the `Cytation5` backend.
 
-### Centrifuges
+### Centrifuges ([docs](https://docs.pylabrobot.org/user_guide/centrifuge.html))
 
 Centrifugation at 800g for 60 seconds:
 
