@@ -191,7 +191,7 @@ class PlateHolder(ResourceHolder):
         "PlateHolder can only store Plate, PlateAdapter or ResourceStack "
         + f"resources, not {type(resource)}"
       )
-    if isinstance(resource, Plate) and resource.plate_type != "skirted":
+    if isinstance(resource, Plate) and resource.plate_type != "skirted" and resource.plate_type != "semiskirted":
       raise ValueError("PlateHolder can only store plates that are skirted")
     return super().assign_child_resource(resource, location, reassign)
 
