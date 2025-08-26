@@ -28,13 +28,14 @@ class FTDI(IOBase):
   """Thin wrapper around pylibftdi to include PLR logging (for io testing)."""
 
   def __init__(self, device_id: Optional[str] = None):
-    self._dev = Device(lazy_open=True, device_id=device_id)
+    #self._dev = Device(lazy_open=True, device_id=device_id)
+    self._dev = None  # <- Don't instantiate yet AU chnage
     self._device_id = device_id or "None"  # for io
 
   async def setup(self):
     if not HAS_PYLIBFTDI:
       raise RuntimeError("pyserial not installed.")
-
+    self._dev = Device() #AU Added
     self._dev.open()
 
   def set_baudrate(self, baudrate: int):

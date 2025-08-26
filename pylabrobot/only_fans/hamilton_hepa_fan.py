@@ -15,7 +15,8 @@ class HamiltonHepaFan(FanBackend):
     self.io = FTDI(device_id=device_id)
 
   async def setup(self):
-    self.io.setup()
+    #self.io.setup()
+    await self.io.setup()  # ✅ must await the coroutine
     self.io.set_baudrate(9600)
     self.io.set_line_property(8, 0, 0)  # 8N1
     self.io.set_latency_timer(16)

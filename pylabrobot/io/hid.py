@@ -45,17 +45,17 @@ class HID(IOBase):
     logger.log(LOG_LEVEL_IO, "Closing HID device %s", self._unique_id)
     capturer.record(HIDCommand(device_id=self._unique_id, action="close", data=""))
 
-  def write(self, data: bytes):
+  async def write(self, data: bytes):
     assert self.device is not None, "forgot to call setup?"
     self.device.write(data)
     logger.log(LOG_LEVEL_IO, "[%s] write %s", self._unique_id, data)
-    capturer.record(HIDCommand(device_id=self._unique_id, action="write", data=data.decode()))
+    capturer.record(HIDCommand(device_id=self._unique_id, action="write", data=data.hex()))
 
-  def read(self, size: int, timeout: int) -> bytes:
+  async def read(self, size: int, timeout: int) -> bytes:
     assert self.device is not None, "forgot to call setup?"
     r = self.device.read(size, timeout=timeout)
     logger.log(LOG_LEVEL_IO, "[%s] read %s", self._unique_id, r)
-    capturer.record(HIDCommand(device_id=self._unique_id, action="read", data=r.decode()))
+    capturer.record(HIDCommand(device_id=self._unique_id, action="read", data=r.hex()))
     return cast(bytes, r)
 
   def serialize(self):
