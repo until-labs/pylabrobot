@@ -269,9 +269,9 @@ def PLT_CAR_L5PCR(name: str) -> PlateCarrier:
       resource_size_x=127.0,
       resource_size_y=86.0,
       name_prefix=name,
+      pedestal_size_z=0.0, # Measured 15 but need to check sign
     ),
     model="PLT_CAR_L5PCR",
-    pedestal_size_z=15.0, # Measured
   )
 
 

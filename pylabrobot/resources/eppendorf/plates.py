@@ -110,7 +110,7 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = Fals
     size_y=82.2,
     size_z=29.4,
     model="Eppendorf_96_wellplate_250ul_Vb_semiskirted",
-    plate_type="semiskirted",
+    plate_type="skirted",
     ordered_items=create_ordered_items_2d(
       Well,
       num_items_x=12,
@@ -126,7 +126,6 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = Fals
       bottom_type=WellBottomType.V,
       material_z_thickness=0.6,
       cross_section_type=CrossSectionType.CIRCLE,
-      pedastal_height=0.0, # Will fix when offsets aren't hardcoded in labautomation (but currently doesn't affect our plates)
     )
   )
 
@@ -137,7 +136,7 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name: str, with_lid: bool 
     size_y=82.2,
     size_z=29.4,
     model="Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste",
-    plate_type="semiskirted",
+    plate_type="skirted",
     ordered_items=create_ordered_items_2d(
       klass=Well,                    # This tells it to create Well instances
       num_items_x=12,
