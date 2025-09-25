@@ -125,7 +125,8 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = Fals
       size_z=19.5,
       bottom_type=WellBottomType.V,
       material_z_thickness=0.6,
-      cross_section_type=CrossSectionType.CIRCLE
+      cross_section_type=CrossSectionType.CIRCLE,
+      pedastal_height=0.0, # Will fix when offsets aren't hardcoded in labautomation (but currently doesn't affect our plates)
     )
   )
 
