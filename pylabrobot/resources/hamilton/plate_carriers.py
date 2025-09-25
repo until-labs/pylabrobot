@@ -271,6 +271,7 @@ def PLT_CAR_L5PCR(name: str) -> PlateCarrier:
       name_prefix=name,
     ),
     model="PLT_CAR_L5PCR",
+    pedestal_size_z=15.0, # Measured
   )
 
 
