@@ -255,6 +255,47 @@ def Thermo_Nunc_96_well_plate_1300uL_Rb(name: str) -> Plate:
   )
 
 
+# # # # # # # # # # Thermo_Nunc_96_wellplate_400uL_Fb # # # # # # # # # #
+
+
+def Thermo_Nunc_96_wellplate_400uL_Fb(name: str) -> Plate:
+  """
+  - Brand: Thermo Scientific / Nunc
+  - Part no.: 165305
+  - Diagram: https://documents.thermofisher.com/TFS-Assets/LCD/Schematics-%26-Diagrams/1653xx_0713.pdf
+  """
+
+  well_diameter = 6.3
+  return Plate(
+    name=name,
+    size_x=127.76,  # from definition, A
+    size_y=85.47,  # from definition, B
+    size_z=14.86,  # from definition, F
+    lid=None,
+    model=Thermo_Nunc_96_wellplate_400uL_Fb.__name__,
+    plate_type="skirted",
+    ordered_items=create_ordered_items_2d(
+      Well,
+      num_items_x=12,
+      num_items_y=8,
+      dx=14.32 - well_diameter / 2,  # from definition, H - well_diameter/2
+      dy=11.25 - well_diameter / 2,  # from definition, J - well_diameter/2
+      dz=1.98,  # from definition, N
+      item_dx=9,
+      item_dy=9,
+      size_x=well_diameter,
+      size_y=well_diameter,
+      size_z=12.1,
+      bottom_type=WellBottomType.FLAT,
+      material_z_thickness=0.25,
+      cross_section_type=CrossSectionType.CIRCLE,
+      compute_volume_from_height=lambda h: math.pi * (well_diameter / 2) ** 2 * h,
+      compute_height_from_volume=lambda liquid_volume: liquid_volume
+      / (math.pi * (well_diameter / 2) ** 2),
+    ),
+  )
+
+
 # # # # # # # # # # thermo_AB_96_wellplate_300ul_Vb_MicroAmp # # # # # # # # # #
 
 
