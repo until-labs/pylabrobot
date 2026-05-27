@@ -5,7 +5,7 @@ import unittest.mock
 from typing import cast
 
 from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.liquid_handling.standard import GripDirection, Pickup
+from pylabrobot.liquid_handling.standard import GripDirection, Pickup, ResourceDrop
 from pylabrobot.plate_reading import PlateReader
 from pylabrobot.plate_reading.chatterbox import PlateReaderChatterboxBackend
 from pylabrobot.resources import (
@@ -21,6 +21,7 @@ from pylabrobot.resources import (
   Cor_96_wellplate_360ul_Fb,
   Lid,
   ResourceStack,
+  Rotation,
   hamilton_96_tiprack_1000uL,
   hamilton_96_tiprack_1000uL_filter,
   no_volume_tracking,
@@ -939,6 +940,83 @@ class TestSTARLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
         ),
       ]
     )
+
+  async def test_move_core_with_z_press_on_distance(self):
+    self.plt_car[1].resource.unassign()
+    await self.lh.move_plate(
+      self.plate,
+      self.plt_car[1],
+      pickup_distance_from_top=13 - 3.33,
+      use_arm="core",
+      core_front_channel=7,
+      return_core_gripper=True,
+      z_press_on_distance=2.5,
+    )
+    self.STAR._write_and_read_command.assert_has_calls(
+      [
+        _any_write_and_read_command_call(
+          "C0ZTid0001xs07975xd0ya1250yb1070pa07pb08tp2350tz2250th2800tt14"
+        ),
+        _any_write_and_read_command_call(
+          "C0ZPid0002xs03479xd0yj1142yv0050zj1876zy0500yo0885yg0825yw15" "th2800te2800"
+        ),
+        _any_write_and_read_command_call(
+          "C0ZRid0003xs03479xd0yj2102zj1876zi025zy0500yo0885th2800te2800"
+        ),
+        _any_write_and_read_command_call(
+          "C0ZSid0004xs07975xd0ya1250yb1070tp2150tz2050th2800te2800"
+        ),
+      ]
+    )
+
+  async def test_core_release_z_press_on_distance_upper_bound(self):
+    await self.STAR.core_release_picked_up_resource(
+      location=Coordinate(10, 20, 30),
+      resource=self.plate,
+      pickup_distance_from_top=13 - 3.33,
+      z_press_on_distance=5.0,
+      return_tool=False,
+    )
+    sent_command = self.STAR._write_and_read_command.call_args.kwargs["cmd"]
+    self.assertIn("zi050", sent_command)
+
+  async def test_core_release_z_press_on_distance_out_of_range(self):
+    with self.assertRaisesRegex(ValueError, "z_press_on_distance must be between 0 and 5.0"):
+      await self.STAR.core_release_picked_up_resource(
+        location=Coordinate(10, 20, 30),
+        resource=self.plate,
+        pickup_distance_from_top=13 - 3.33,
+        z_press_on_distance=-0.1,
+      )
+
+    with self.assertRaisesRegex(ValueError, "z_press_on_distance must be between 0 and 5.0"):
+      await self.STAR.core_release_picked_up_resource(
+        location=Coordinate(10, 20, 30),
+        resource=self.plate,
+        pickup_distance_from_top=13 - 3.33,
+        z_press_on_distance=5.1,
+      )
+
+    self.STAR._write_and_read_command.assert_not_called()
+
+  async def test_iswap_drop_resource_rejects_z_press_on_distance(self):
+    drop = ResourceDrop(
+      resource=self.plate,
+      destination=Coordinate.zero(),
+      destination_absolute_rotation=Rotation(),
+      offset=Coordinate.zero(),
+      pickup_distance_from_top=13 - 3.33,
+      pickup_direction=GripDirection.FRONT,
+      direction=GripDirection.FRONT,
+      rotation=0,
+    )
+
+    with self.assertRaisesRegex(
+      ValueError, "z_press_on_distance is only supported with use_arm='core'"
+    ):
+      await self.STAR.drop_resource(drop, use_arm="iswap", z_press_on_distance=1.0)
+
+    self.STAR._write_and_read_command.assert_not_called()
 
 
 class STARIswapMovementTests(unittest.IsolatedAsyncioTestCase):
