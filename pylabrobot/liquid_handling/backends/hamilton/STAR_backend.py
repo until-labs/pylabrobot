@@ -3677,6 +3677,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     resource: Resource,
     gripper_y_margin: float = 0.5,
     offset: Coordinate = Coordinate.zero(),
+    z_speed: float = 60.0,
     minimum_traverse_height_at_beginning_of_a_command: float = 275.0,
     z_position_at_the_command_end: float = 275.0,
     enable_recovery: bool = True,
@@ -3694,6 +3695,9 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       gripper_y_margin = Distance between the front / back wall of the resource
         and the grippers during "bumping" / checking
       offset: Offset from resource position in mm.
+      z_speed: Descent speed of the gripper paddles in mm/s. Lower values produce a quieter,
+        lighter tap on contact. Must be between 0 and 128.7 mm/s. Default 60.0 mm/s
+        (matches the VENUS `check_plate` default).
       minimum_traverse_height_at_beginning_of_a_command: Minimum traverse height at beginning of
         a command [mm] (refers to all channels independent of tip pattern parameter 'tm').
         Must be between 0 and 360.0.
@@ -3713,6 +3717,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       f"width between channels must be between 9 and {resource.get_absolute_size_y()} mm"
       " (i.e. the minimal distance between channels and the max y size of the resource"
     )
+    assert 0 < z_speed <= 128.7, "z_speed must be > 0 and <= 128.7 mm/s"
 
     # Check if CoRe gripper currently in use
     cores_used = not self._core_parked
@@ -3733,7 +3738,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
           # Set default values based on VENUS check_plate commands
           y_gripping_speed=50,
           x_direction=0,
-          z_speed=600,
+          z_speed=round(z_speed * 10),
           grip_strength=20,
           # Enable mods of channel z position for check acceleration
           minimum_traverse_height_at_beginning_of_a_command=round(
