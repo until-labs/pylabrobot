@@ -2,6 +2,7 @@
 
 import math
 
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.height_volume_functions import (
   calculate_liquid_height_in_container_2segments_square_ubottom,
   calculate_liquid_volume_container_2segments_square_ubottom,
@@ -258,6 +259,7 @@ def Thermo_Nunc_96_well_plate_1300uL_Rb(name: str) -> Plate:
 # # # # # # # # # # Thermo_Nunc_96_wellplate_400uL_Fb # # # # # # # # # #
 
 
+@compact_factory
 def Thermo_Nunc_96_wellplate_400uL_Fb(name: str) -> Plate:
   """
   - Brand: Thermo Scientific / Nunc

@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Literal, Optional, cast
 
 from pylabrobot.resources.carrier import ResourceHolder
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.coordinate import Coordinate
 from pylabrobot.resources.deck import Deck
 from pylabrobot.resources.errors import NoLocationError
@@ -577,6 +578,7 @@ def STARLetDeck(
   )
 
 
+@compact_factory
 def STARDeck(
   origin: Coordinate = Coordinate.zero(),
   with_trash: bool = True,

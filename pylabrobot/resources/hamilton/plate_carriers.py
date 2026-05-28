@@ -4,6 +4,7 @@ from pylabrobot.resources.carrier import (
   PlateHolder,
   create_homogeneous_resources,
 )
+from pylabrobot.resources.compact import compact_factory
 
 
 def PLT_CAR_L4_HHS_ALT_A00(name: str) -> PlateCarrier:
@@ -100,6 +101,7 @@ def PLT_CAR_L5AC(name: str) -> PlateCarrier:
   )
 
 
+@compact_factory
 def PLT_CAR_L5AC_A00(name: str) -> PlateCarrier:
   """Carrier for 5 deep well 96 Well PCR Plates
   Hamilton cat. no.: 182090
@@ -250,6 +252,7 @@ def PLT_CAR_L5MD_A00(name: str) -> PlateCarrier:
   )
 
 
+@compact_factory
 def PLT_CAR_L5PCR(name: str) -> PlateCarrier:
   """ """
   return PlateCarrier(

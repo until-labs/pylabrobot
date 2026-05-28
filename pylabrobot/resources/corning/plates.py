@@ -1,5 +1,6 @@
 """ Corning plates. """
 
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.height_volume_functions import (
   calculate_liquid_height_in_container_2segments_square_vbottom,
   calculate_liquid_volume_container_2segments_square_vbottom,
@@ -85,6 +86,7 @@ def Cos_96_EZWash(name: str, with_lid: bool = False) -> Plate:
 # # # # # # # # # # Cor_96_wellplate_2mL_Vb # # # # # # # # # #
 
 
+@compact_factory
 def Cor_96_wellplate_2mL_Vb(name: str, with_lid: bool = False) -> Plate:
   """
   Corning cat. no.: 3960

@@ -1,0 +1,234 @@
+"""Tests for the compact serialization module.
+
+Round-trip tests for each factory we expect to be compact-serializable, plus
+a full-deck fixture and the MFXCarrier-with-modules edge case.
+"""
+
+import unittest
+
+from pylabrobot.resources.compact import compact_factory, serialize_compact
+from pylabrobot.resources.corning.costar.plates import Cor_Cos_12_wellplate_6900ul_Fb
+from pylabrobot.resources.corning.plates import Cor_96_wellplate_2mL_Vb
+from pylabrobot.resources.eppendorf.plates import (
+  Eppendorf_96_wellplate_250ul_Vb_semiskirted,
+  Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste,
+)
+from pylabrobot.resources.hamilton.hamilton_decks import STARDeck
+from pylabrobot.resources.hamilton.mfx_carriers import MFX_CAR_L4_SHAKER
+from pylabrobot.resources.hamilton.mfx_modules import MFX_DWP_module_flat
+from pylabrobot.resources.hamilton.plate_carriers import PLT_CAR_L5AC_A00, PLT_CAR_L5PCR
+from pylabrobot.resources.hamilton.plates import Hamilton_1_troughplate_300ml
+from pylabrobot.resources.hamilton.tip_carriers import TIP_CAR_480_A00
+from pylabrobot.resources.hamilton.tip_racks import (
+  hamilton_96_tiprack_50uL_filter,
+  hamilton_96_tiprack_300uL_filter,
+  hamilton_96_tiprack_1000uL_filter,
+)
+from pylabrobot.resources.nest.plates import nest_12_troughplate_15000uL_Vb
+from pylabrobot.resources.resource import Resource
+from pylabrobot.resources.thermo_fisher.plates import Thermo_Nunc_96_wellplate_400uL_Fb
+
+
+# All labeled factories we expect to round-trip. Each entry is a
+# zero-arg-after-name builder; the test loops over them.
+_LEAF_BUILDERS = [
+  lambda n: Eppendorf_96_wellplate_250ul_Vb_semiskirted(name=n),
+  lambda n: Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name=n),
+  lambda n: hamilton_96_tiprack_50uL_filter(name=n),
+  lambda n: hamilton_96_tiprack_300uL_filter(name=n),
+  lambda n: hamilton_96_tiprack_1000uL_filter(name=n),
+  lambda n: nest_12_troughplate_15000uL_Vb(name=n),
+  lambda n: Hamilton_1_troughplate_300ml(name=n),
+  lambda n: Cor_Cos_12_wellplate_6900ul_Fb(name=n),
+  lambda n: Cor_96_wellplate_2mL_Vb(name=n),
+  lambda n: Thermo_Nunc_96_wellplate_400uL_Fb(name=n),
+  lambda n: MFX_DWP_module_flat(name=n),
+]
+
+_CARRIER_BUILDERS = [
+  lambda n: PLT_CAR_L5AC_A00(name=n),
+  lambda n: PLT_CAR_L5PCR(name=n),
+  lambda n: TIP_CAR_480_A00(name=n),
+]
+
+
+class TestLeafRoundTrip(unittest.TestCase):
+  """Every leaf resource (plate, tip rack, module) round-trips by itself."""
+
+  def test_leaf_round_trip(self):
+    for builder in _LEAF_BUILDERS:
+      resource = builder("test_name")
+      blob = resource.serialize_compact()
+      self.assertTrue(blob["_compact_v1"])
+      self.assertEqual(blob["name"], "test_name")
+      # Round-trip
+      restored = Resource.deserialize_compact(blob)
+      self.assertEqual(resource, restored)
+
+
+class TestCarrierRoundTrip(unittest.TestCase):
+  """Carriers round-trip empty and with assignments."""
+
+  def test_empty_carrier_round_trip(self):
+    for builder in _CARRIER_BUILDERS:
+      carrier = builder("test_carrier")
+      blob = carrier.serialize_compact()
+      # Empty carriers have no assignments block
+      self.assertNotIn("assignments", blob)
+      restored = Resource.deserialize_compact(blob)
+      self.assertEqual(carrier, restored)
+
+  def test_plate_carrier_with_plate_round_trip(self):
+    carrier = PLT_CAR_L5AC_A00(name="plate_car")
+    carrier[0] = Eppendorf_96_wellplate_250ul_Vb_semiskirted(name="cell_plate")
+    carrier[2] = nest_12_troughplate_15000uL_Vb(name="reservoir")
+    blob = carrier.serialize_compact()
+    self.assertEqual(set(blob["assignments"].keys()), {"0", "2"})
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(carrier, restored)
+
+  def test_tip_carrier_with_tip_rack_round_trip(self):
+    carrier = TIP_CAR_480_A00(name="tips_car")
+    carrier[0] = hamilton_96_tiprack_1000uL_filter(name="tips_1")
+    carrier[3] = hamilton_96_tiprack_300uL_filter(name="tips_2")
+    blob = carrier.serialize_compact()
+    self.assertEqual(set(blob["assignments"].keys()), {"0", "3"})
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(carrier, restored)
+
+
+class TestMFXCarrierRoundTrip(unittest.TestCase):
+  """MFXCarrier needs ``modules=`` at construction — verify the special-case."""
+
+  def test_mfx_carrier_with_modules_only(self):
+    mfx = MFX_CAR_L4_SHAKER(
+      name="mfx_carrier",
+      modules={
+        0: MFX_DWP_module_flat(name="module_0"),
+        2: MFX_DWP_module_flat(name="module_2"),
+      },
+    )
+    blob = mfx.serialize_compact()
+    self.assertIn("modules", blob)
+    self.assertNotIn("assignments", blob)
+    self.assertEqual(set(blob["modules"].keys()), {"0", "2"})
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(mfx, restored)
+
+  def test_mfx_carrier_with_modules_and_plates(self):
+    mfx = MFX_CAR_L4_SHAKER(
+      name="mfx_carrier",
+      modules={
+        0: MFX_DWP_module_flat(name="module_0"),
+        1: MFX_DWP_module_flat(name="module_1"),
+      },
+    )
+    mfx[0] = nest_12_troughplate_15000uL_Vb(name="reservoir_1")
+    blob = mfx.serialize_compact()
+    self.assertIn("modules", blob)
+    self.assertIn("assignments", blob)
+    self.assertEqual(set(blob["assignments"].keys()), {"0"})
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(mfx, restored)
+
+
+class TestFullDeckRoundTrip(unittest.TestCase):
+  """Full deck with multiple carrier types — the realistic case."""
+
+  def test_full_deck_round_trip(self):
+    deck = STARDeck()
+
+    tips_car = TIP_CAR_480_A00(name="tips_carrier")
+    tips_car[0] = hamilton_96_tiprack_1000uL_filter(name="tips_1")
+    tips_car[1] = hamilton_96_tiprack_1000uL_filter(name="tips_2")
+    deck.assign_child_resource(tips_car, rails=1)
+
+    plate_car = PLT_CAR_L5AC_A00(name="plate_carrier")
+    plate_car[0] = Eppendorf_96_wellplate_250ul_Vb_semiskirted(name="cell_plate")
+    deck.assign_child_resource(plate_car, rails=7)
+
+    mfx = MFX_CAR_L4_SHAKER(
+      name="mfx_carrier",
+      modules={
+        0: MFX_DWP_module_flat(name="dwp_module_0"),
+        1: MFX_DWP_module_flat(name="dwp_module_1"),
+      },
+    )
+    mfx[0] = nest_12_troughplate_15000uL_Vb(name="reservoir_1")
+    deck.assign_child_resource(mfx, rails=14)
+
+    blob = deck.serialize_compact()
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(deck, restored)
+
+  def test_compact_blob_is_orders_of_magnitude_smaller_than_verbose(self):
+    """Sanity check: the whole point of the compact format is size reduction."""
+    import json
+
+    deck = STARDeck()
+    plate_car = PLT_CAR_L5AC_A00(name="plate_carrier")
+    for i in range(5):
+      plate_car[i] = Eppendorf_96_wellplate_250ul_Vb_semiskirted(name=f"plate_{i}")
+    deck.assign_child_resource(plate_car, rails=7)
+
+    compact = json.dumps(deck.serialize_compact())
+    verbose = json.dumps(deck.serialize())
+    # Expect at least a 50x reduction. In practice we see ~140x for typical decks.
+    self.assertGreater(len(verbose) / len(compact), 50)
+
+
+class TestErrorHandling(unittest.TestCase):
+  """Resources built outside a labeled factory raise a clear error."""
+
+  def test_unlabeled_resource_raises(self):
+    # Direct construction of a base Resource, not via a labeled factory.
+    r = Resource("unlabeled", size_x=10, size_y=10, size_z=10)
+    with self.assertRaises(ValueError) as cm:
+      r.serialize_compact()
+    self.assertIn("@compact_factory", str(cm.exception))
+
+  def test_deserialize_rejects_missing_marker(self):
+    blob = {"factory": "pylabrobot.resources.resource.Resource", "name": "x"}
+    with self.assertRaises(ValueError) as cm:
+      Resource.deserialize_compact(blob)
+    self.assertIn("_compact_v1", str(cm.exception))
+
+  def test_deserialize_rejects_unresolvable_factory(self):
+    blob = {
+      "_compact_v1": True,
+      "factory": "nonexistent.module.Factory",
+      "name": "x",
+    }
+    with self.assertRaises((ImportError, ModuleNotFoundError)):
+      Resource.deserialize_compact(blob)
+
+
+class TestCompactFactoryDecorator(unittest.TestCase):
+  """The decorator itself: introspection + labeling."""
+
+  def test_decorator_sets_factory_qn_on_wrapper(self):
+    self.assertTrue(
+      getattr(Eppendorf_96_wellplate_250ul_Vb_semiskirted, "_is_compact_factory", False)
+    )
+    self.assertEqual(
+      Eppendorf_96_wellplate_250ul_Vb_semiskirted._factory_qn,
+      "pylabrobot.resources.eppendorf.plates.Eppendorf_96_wellplate_250ul_Vb_semiskirted",
+    )
+
+  def test_decorator_sets_factory_qn_on_instance(self):
+    p = Eppendorf_96_wellplate_250ul_Vb_semiskirted(name="x")
+    self.assertEqual(
+      p._factory_qn,
+      "pylabrobot.resources.eppendorf.plates.Eppendorf_96_wellplate_250ul_Vb_semiskirted",
+    )
+
+  def test_decorator_preserves_signature(self):
+    import inspect
+
+    sig = inspect.signature(Eppendorf_96_wellplate_250ul_Vb_semiskirted)
+    self.assertIn("name", sig.parameters)
+    self.assertIn("with_lid", sig.parameters)
+
+
+if __name__ == "__main__":
+  unittest.main()

@@ -1,3 +1,4 @@
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.tip_rack import (
   NestedTipRack,
   TipRack,
@@ -83,6 +84,7 @@ def hamilton_96_tiprack_10uL(name: str, with_tips: bool = True) -> TipRack:
 # # # # # # # # # # 50 ul Tips # # # # # # # # # #
 
 
+@compact_factory
 def hamilton_96_tiprack_50uL_filter(name: str, with_tips: bool = True) -> TipRack:
   """Hamilton cat. no.: 235948 (non-sterile), 235979 (sterile), 235829 (clear, non-sterile)
   Hamilton name: 'TIP_50ul_w_filter'
@@ -170,6 +172,7 @@ def hamilton_96_tiprack_50uL_NTR(name: str, with_tips: bool = True) -> NestedTip
 # # # # # # # # # # 300 ul Tips # # # # # # # # # #
 
 
+@compact_factory
 def hamilton_96_tiprack_300uL_filter(name: str, with_tips: bool = True) -> TipRack:
   """Hamilton cat. no.: 235830 (clear, non-sterile), 235903 (non-sterile), 235938 (sterile)
   Hamilton name: 'STF'
@@ -254,6 +257,7 @@ def hamilton_96_tiprack_300uL_filter_slim(name: str, with_tips: bool = True) -> 
 # # # # # # # # # # 1_000 uL Tips # # # # # # # # # #
 
 
+@compact_factory
 def hamilton_96_tiprack_1000uL_filter(name: str, with_tips: bool = True) -> TipRack:
   """Hamilton cat. no.: 235820 (clear, non-sterile), 235905 (non-sterile), 235940 (sterile)
   Hamilton name: 'HTF'

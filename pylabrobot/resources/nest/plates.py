@@ -1,5 +1,6 @@
 # https://cell-nest.oss-cn-zhangjiakou.aliyuncs.com/Resource/File/2022/11/24/NEST%20Reservoir.pdf
 
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.height_volume_functions import (
   compute_height_from_volume_rectangle,
   compute_volume_from_height_rectangle,
@@ -134,6 +135,7 @@ def nest_8_troughplate_22000uL_Vb(name: str) -> Plate:
   )
 
 
+@compact_factory
 def nest_12_troughplate_15000uL_Vb(name: str) -> Plate:
   """part no 360102."""
   well_size_x = 8.2  # from datasheet
