@@ -6,6 +6,7 @@ a full-deck fixture and the MFXCarrier-with-modules edge case.
 
 import unittest
 
+from pylabrobot.resources.carrier import MFXCarrier
 from pylabrobot.resources.compact import compact_factory, serialize_compact
 from pylabrobot.resources.corning.costar.plates import Cor_Cos_12_wellplate_6900ul_Fb
 from pylabrobot.resources.corning.plates import Cor_96_wellplate_2mL_Vb
@@ -50,6 +51,23 @@ _CARRIER_BUILDERS = [
   lambda n: PLT_CAR_L5PCR(name=n),
   lambda n: TIP_CAR_480_A00(name=n),
 ]
+
+
+@compact_factory
+def _fixed_assembly_mfx(name: str) -> MFXCarrier:
+  """A self-assembling MFX carrier: modules baked in, factory takes only ``name``.
+
+  Mirrors the until-data ``until_mfx_cooling_dwp`` pattern — the whole carrier is
+  one resource, so its compact blob records only the qualified name plus any
+  plate assignments, never a ``modules`` block.
+  """
+  return MFX_CAR_L4_SHAKER(
+    name=name,
+    modules={
+      0: MFX_DWP_module_flat(name=f"{name}_m0"),
+      2: MFX_DWP_module_flat(name=f"{name}_m2"),
+    },
+  )
 
 
 class TestLeafRoundTrip(unittest.TestCase):
@@ -132,6 +150,39 @@ class TestMFXCarrierRoundTrip(unittest.TestCase):
     self.assertEqual(mfx, restored)
 
 
+class TestMFXFixedAssemblyRoundTrip(unittest.TestCase):
+  """A fixed-assembly MFX factory (takes only ``name``) serializes like a
+  standard carrier: no ``modules`` block, modules rebuilt by the factory."""
+
+  def test_no_modules_block_emitted(self):
+    mfx = _fixed_assembly_mfx(name="mfx_fixed")
+    blob = mfx.serialize_compact()
+    self.assertNotIn("modules", blob)  # the factory bakes them in
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(mfx, restored)
+    # The modules are reconstructed by re-calling the factory, not from the blob.
+    self.assertEqual(sorted(restored.sites), [0, 2])
+
+  def test_plate_assignment_round_trips(self):
+    mfx = _fixed_assembly_mfx(name="mfx_fixed")
+    mfx[0] = nest_12_troughplate_15000uL_Vb(name="reservoir_1")
+    blob = mfx.serialize_compact()
+    self.assertNotIn("modules", blob)
+    self.assertEqual(set(blob["assignments"].keys()), {"0"})
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(mfx, restored)
+
+  def test_fixed_assembly_on_full_deck(self):
+    deck = STARDeck()
+    mfx = _fixed_assembly_mfx(name="mfx_fixed")
+    mfx[0] = nest_12_troughplate_15000uL_Vb(name="reservoir_1")
+    deck.assign_child_resource(mfx, rails=14)
+    blob = deck.serialize_compact()
+    self.assertNotIn("modules", blob["children"][0])
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(deck, restored)
+
+
 class TestFullDeckRoundTrip(unittest.TestCase):
   """Full deck with multiple carrier types — the realistic case."""
 
@@ -201,6 +252,19 @@ class TestErrorHandling(unittest.TestCase):
     }
     with self.assertRaises((ImportError, ModuleNotFoundError)):
       Resource.deserialize_compact(blob)
+
+  def test_deserialize_rejects_non_compact_factory(self):
+    # Importable and callable, but NOT @compact_factory-labeled: deserialize must
+    # refuse to invoke it (symmetric with serialize's labeling requirement), so a
+    # blob can't be turned into a call to an arbitrary imported callable.
+    blob = {
+      "_compact_v1": True,
+      "factory": "pylabrobot.resources.resource.Resource",
+      "name": "x",
+    }
+    with self.assertRaises(ValueError) as cm:
+      Resource.deserialize_compact(blob)
+    self.assertIn("@compact_factory", str(cm.exception))
 
 
 class TestCompactFactoryDecorator(unittest.TestCase):

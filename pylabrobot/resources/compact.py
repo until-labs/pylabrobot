@@ -34,11 +34,15 @@ Carriers and decks have special handling:
 - A regular :class:`~pylabrobot.resources.carrier.Carrier` serializes the
   resources *assigned* to its sites (the sites themselves are reconstructed
   by the factory). Empty sites are omitted.
-- A :class:`~pylabrobot.resources.carrier.MFXCarrier` is special: its
-  factory requires ``modules=`` at construction time. The compact format
-  serializes the modules in a separate ``modules`` block so the deserializer
-  can rebuild them first, then call the factory, then assign plates onto
-  the resulting sites.
+- A :class:`~pylabrobot.resources.carrier.MFXCarrier` whose factory declares
+  ``modules=`` (a generic carrier — the caller chooses which modules sit in
+  which slots) serializes the modules in a separate ``modules`` block, so the
+  deserializer rebuilds them first, then calls the factory, then assigns plates
+  onto the resulting sites. A fixed-assembly MFX factory that bakes its modules
+  in and takes only ``name`` serializes like a standard carrier (assignments
+  only) — it reconstructs its own modules by re-calling the factory, so
+  recording them would be redundant and could silently drift from what the
+  factory produces.
 
 Per-instance attribute overrides (a plate with a custom ``max_volume_uL``,
 etc.) are intentionally **out of scope for v1** — the compact format
@@ -114,6 +118,20 @@ def _factory_qn_or_raise(resource: "Resource") -> str:
   return qn
 
 
+def _factory_declares_modules(qn: str) -> bool:
+  """Whether the factory at ``qn`` takes a ``modules=`` parameter.
+
+  A generic MFXCarrier factory (e.g. ``MFX_CAR_L4_SHAKER``) declares
+  ``modules=`` — its modules are caller-chosen, so they must be recorded in the
+  blob. A fixed-assembly factory bakes its modules in and takes only ``name``;
+  it rebuilds them itself on deserialize, so the blob omits them and the carrier
+  serializes like a standard one. Introspecting the signature keeps this a
+  property of the factory, not a hand-maintained list.
+  """
+  sig = inspect.signature(inspect.unwrap(_import_qualified(qn)))
+  return "modules" in sig.parameters
+
+
 def serialize_compact(resource: "Resource") -> Dict[str, Any]:
   """Emit a compact JSON blob describing this resource and its children.
 
@@ -151,17 +169,22 @@ def serialize_compact(resource: "Resource") -> Dict[str, Any]:
     return blob
 
   if isinstance(resource, MFXCarrier):
-    # MFXCarrier's factory takes ``modules=`` at construction. The modules
-    # are the carrier's sites; plates assigned to those modules are the
-    # post-construction additions.
-    modules: Dict[str, Any] = {}
+    # Plates assigned onto the modules' holders are recorded for every MFX
+    # carrier. The modules themselves are recorded ONLY when the factory takes
+    # ``modules=`` (a generic carrier whose modules are caller-chosen); a
+    # fixed-assembly factory rebuilds its own modules, so emitting them would be
+    # redundant — it serializes like a standard carrier.
     assignments: Dict[str, Any] = {}
     for slot_idx, site in resource.sites.items():
-      modules[str(slot_idx)] = serialize_compact(site)
       if site.resource is not None:
         assignments[str(slot_idx)] = serialize_compact(site.resource)
-    if modules:
-      blob["modules"] = modules
+    if _factory_declares_modules(blob["factory"]):
+      modules: Dict[str, Any] = {
+        str(slot_idx): serialize_compact(site)
+        for slot_idx, site in resource.sites.items()
+      }
+      if modules:
+        blob["modules"] = modules
     if assignments:
       blob["assignments"] = assignments
     return blob
@@ -203,27 +226,39 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
     )
 
   factory = _import_qualified(blob["factory"])
+  if not getattr(factory, "_is_compact_factory", False):
+    raise ValueError(
+      f"Refusing to deserialize via {blob['factory']!r}: it does not resolve to a "
+      f"@compact_factory-labeled factory. A compact blob may only instantiate "
+      f"resources through labeled factories — the symmetric guard to "
+      f"serialize_compact's _factory_qn requirement, so a hostile/garbled blob "
+      f"cannot invoke an arbitrary imported callable."
+    )
   name = blob["name"]
 
-  # MFXCarrier special case: factory needs ``modules=`` at construction.
+  # A generic MFXCarrier records its modules (caller-chosen); rebuild them and
+  # pass them to the factory. A fixed-assembly MFX factory has no ``modules``
+  # block and bakes its own, so it's constructed with just ``name``.
   if "modules" in blob:
     modules = {
       int(slot): deserialize_compact(mod_blob)
       for slot, mod_blob in blob["modules"].items()
     }
     resource = _invoke_factory(factory, name=name, modules=modules)
-    # Now assign plates onto the modules' holders.
-    for slot, plate_blob in blob.get("assignments", {}).items():
-      plate = deserialize_compact(plate_blob)
-      resource[int(slot)].assign_child_resource(plate)
-    return resource
-
-  resource = _invoke_factory(factory, name=name)
+  else:
+    resource = _invoke_factory(factory, name=name)
 
   if isinstance(resource, Deck):
     for child_blob in blob.get("children", []):
       child = deserialize_compact(child_blob)
       resource.assign_child_resource(child, rails=child_blob["rails"])
+    return resource
+
+  if isinstance(resource, MFXCarrier):
+    # Plates were recorded in ``assignments``; drop them onto the modules'
+    # holders (the modules came either from the blob or the factory itself).
+    for slot, plate_blob in blob.get("assignments", {}).items():
+      resource[int(slot)].assign_child_resource(deserialize_compact(plate_blob))
     return resource
 
   # Standard carriers and leaf resources: assignments go via __setitem__.
