@@ -3271,6 +3271,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     pickup_distance_from_top: float,
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
+    z_press_on_distance: float = 0.0,
     return_tool: bool = True,
   ):
     """Place resource with CoRe gripper tool
@@ -3285,8 +3286,13 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         between 0 and 360.0.
       z_position_at_the_command_end: Minimum z-Position at end of a command [mm] (refers to all
         channels independent of tip pattern parameter 'tm'). Must be between 0 and 360.0
+      z_press_on_distance: Downward press distance after placing and before releasing [mm]. Must
+        be between 0 and 5.0.
       return_tool: Return tool to wasteblock mount after placing. Default True.
     """
+
+    if not 0 <= z_press_on_distance <= 5.0:
+      raise ValueError("z_press_on_distance must be between 0 and 5.0")
 
     # Get center of destination location. Also gripping height and plate width.
     grip_height = location.z + resource.get_absolute_size_z() - pickup_distance_from_top
@@ -3297,7 +3303,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       x_direction=0,
       y_position=round(location.y * 10),
       z_position=round(grip_height * 10),
-      z_press_on_distance=0,
+      z_press_on_distance=round(z_press_on_distance * 10),
       z_speed=500,
       open_gripper_position=round(grip_width * 10) + 30,
       minimum_traverse_height_at_beginning_of_a_command=round(
@@ -3477,6 +3483,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     return_core_gripper: bool = True,
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
+    z_press_on_distance: float = 0.0,
     open_gripper_position: Optional[float] = None,
     hotel_depth=160.0,
     hotel_clearance_height=7.5,
@@ -3495,6 +3502,9 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     # The resource is moved by drop.rotation
     # The new resource absolute location is
     # drop.resource.get_absolute_rotation().z + drop.rotation
+    if use_arm == "iswap" and z_press_on_distance != 0.0:
+      raise ValueError("z_press_on_distance is only supported with use_arm='core'")
+
     center_in_absolute_space = drop.resource.center().rotated(
       Rotation(z=drop.resource.get_absolute_rotation().z + drop.rotation)
     )
@@ -3588,6 +3598,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         pickup_distance_from_top=drop.pickup_distance_from_top,
         minimum_traverse_height_at_beginning_of_a_command=self._iswap_traversal_height,
         z_position_at_the_command_end=self._iswap_traversal_height,
+        z_press_on_distance=z_press_on_distance,
         # int(previous_location.z + move.resource.get_size_z() / 2) * 10,
         return_tool=return_core_gripper,
       )
@@ -5509,7 +5520,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     assert 0 <= x_direction <= 1, "x_direction must be between 0 and 1"
     assert 0 <= y_position <= 6500, "y_position must be between 0 and 6500"
     assert 0 <= z_position <= 3600, "z_position must be between 0 and 3600"
-    assert 0 <= z_press_on_distance <= 50, "z_press_on_distance must be between 0 and 999"
+    assert 0 <= z_press_on_distance <= 50, "z_press_on_distance must be between 0 and 50"
     assert 0 <= z_speed <= 1600, "z_speed must be between 0 and 1600"
     assert 0 <= open_gripper_position <= 9999, "open_gripper_position must be between 0 and 9999"
     assert (
