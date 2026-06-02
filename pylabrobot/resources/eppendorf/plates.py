@@ -1,3 +1,4 @@
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.plate import Lid, Plate
 from pylabrobot.resources.utils import create_ordered_items_2d
 from pylabrobot.resources.well import (
@@ -99,6 +100,7 @@ def Eppendorf_96_wellplate_250ul_Vb(name: str, with_lid: bool = False) -> Plate:
     ),
   )
 
+@compact_factory
 def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = False) -> Plate:
   """
   Eppendorf cat. no.: 0030129334
@@ -129,6 +131,7 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = Fals
     )
   )
 
+@compact_factory
 def Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name: str, with_lid: bool = False) -> Plate:
   return Plate(
     name=name,

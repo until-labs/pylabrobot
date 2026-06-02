@@ -5,6 +5,7 @@ from pylabrobot.resources.carrier import (
   TipCarrier,
   create_homogeneous_resources,
 )
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.coordinate import Coordinate
 
 
@@ -216,6 +217,7 @@ def TIP_CAR_480BC_A00(name: str) -> TipCarrier:
   )
 
 
+@compact_factory
 def TIP_CAR_480_A00(name: str) -> TipCarrier:
   """Carrier for 5 Racks with 96 Tips landscape [revision A00]"""
   return TipCarrier(

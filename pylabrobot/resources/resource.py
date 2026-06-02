@@ -103,6 +103,33 @@ class Resource:
       "parent_name": self.parent.name if self.parent is not None else None,
     }
 
+  def serialize_compact(self) -> dict:
+    """Emit a compact JSON blob describing this resource and its children.
+
+    Records the factory qualified name + variable per-instance state only
+    (name, child assignments, deck-rail placement). Class-default geometry
+    is NOT serialized — the receiver reconstructs it by calling the factory.
+
+    Requires this resource (and any descendant we serialize) to have been
+    constructed through a ``@compact_factory``-labeled factory; raises
+    ``ValueError`` otherwise. See :mod:`pylabrobot.resources.compact`.
+    """
+    from .compact import serialize_compact
+
+    return serialize_compact(self)
+
+  @classmethod
+  def deserialize_compact(cls, blob: dict) -> "Resource":
+    """Materialize a compact blob into a Resource tree.
+
+    Resolves ``blob["factory"]`` via :mod:`importlib`, calls the factory,
+    then recursively materializes children. See
+    :mod:`pylabrobot.resources.compact`.
+    """
+    from .compact import deserialize_compact
+
+    return deserialize_compact(blob)
+
   @property
   def name(self) -> str:
     """Get the name of this resource."""

@@ -1,6 +1,7 @@
 import warnings
 
 from pylabrobot.resources.carrier import Coordinate, PlateHolder
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.resource_holder import ResourceHolder
 
 
@@ -63,6 +64,7 @@ def hamilton_mfx_plateholder_DWP_metal_tapped(name: str) -> PlateHolder:
   )
 
 
+@compact_factory
 def MFX_DWP_module_flat(name: str) -> PlateHolder:
   """Hamilton cat. no.: 6601988-01
   Hamilton name: 'MFX_DWP_module_flat'
