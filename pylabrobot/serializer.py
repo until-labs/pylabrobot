@@ -17,53 +17,43 @@ JSON: TypeAlias = Union[Dict[str, "JSON"], List["JSON"], str, int, float, bool, 
 
 
 def get_plr_class_from_string(klass_type: str):
-  import pylabrobot.centrifuge as centrifuge_module
-  import pylabrobot.config as config_module
-  import pylabrobot.gui as gui_module
-  import pylabrobot.heating_shaking as heating_shaking_module
-  import pylabrobot.io as io_module
-  import pylabrobot.liquid_handling as liquid_handling_module
-  import pylabrobot.machines as machines_module
-  import pylabrobot.only_fans as only_fans_module
-  import pylabrobot.plate_reading as plate_reading_module
-  import pylabrobot.powder_dispensing as powder_dispensing_module
-  import pylabrobot.pumps as pumps_module
-  import pylabrobot.resources as resources_module
-  import pylabrobot.scales as scales_module
-  import pylabrobot.shaking as shaking_module
-  import pylabrobot.storage as storage_module
-  import pylabrobot.temperature_controlling as temperature_controlling_module
-  import pylabrobot.testing as testing_module
-  import pylabrobot.tests as tests_module
-  import pylabrobot.thermocycling as thermocycling_module
-  import pylabrobot.tilting as tilting_module
-  import pylabrobot.utils as utils_module
-  import pylabrobot.visualizer as visualizer_module
+  import importlib
 
-  modules = [
-    centrifuge_module,
-    config_module,
-    gui_module,
-    heating_shaking_module,
-    storage_module,
-    io_module,
-    liquid_handling_module,
-    machines_module,
-    only_fans_module,
-    plate_reading_module,
-    powder_dispensing_module,
-    pumps_module,
-    resources_module,
-    scales_module,
-    shaking_module,
-    temperature_controlling_module,
-    thermocycling_module,
-    testing_module,
-    tests_module,
-    tilting_module,
-    utils_module,
-    visualizer_module,
+  # Each submodule is scanned for a serializable class by name. Import them
+  # defensively: gui/testing/tests are not shipped in built distributions (no
+  # __init__.py), and pumps/storage/only_fans eagerly import optional firmware
+  # deps (pyserial, pylibftdi). A missing module or optional dependency must not
+  # break all deserialization.
+  module_names = [
+    "centrifuge",
+    "config",
+    "gui",
+    "heating_shaking",
+    "io",
+    "liquid_handling",
+    "machines",
+    "only_fans",
+    "plate_reading",
+    "powder_dispensing",
+    "pumps",
+    "resources",
+    "scales",
+    "shaking",
+    "storage",
+    "temperature_controlling",
+    "testing",
+    "tests",
+    "thermocycling",
+    "tilting",
+    "utils",
+    "visualizer",
   ]
+  modules = []
+  for name in module_names:
+    try:
+      modules.append(importlib.import_module(f"pylabrobot.{name}"))
+    except ImportError:
+      continue
 
   for name, obj in [
     member for mod in modules for member in inspect.getmembers(mod, predicate=inspect.isclass)

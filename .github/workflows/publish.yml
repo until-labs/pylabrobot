@@ -94,34 +94,35 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Package version: $VERSION"
 
-      - name: Set package version from tag
+      - name: Check committed version matches tag
         shell: bash
         run: |
           set -euo pipefail
 
           VERSION="${{ steps.version.outputs.version }}"
 
+          python -m pip install packaging
           python - <<PY
-          from pathlib import Path
           import re
+          from pathlib import Path
+          from packaging.version import Version
 
-          version = "${VERSION}"
-          path = Path("pylabrobot/__version__.py")
-          text = path.read_text()
+          tag_version = "${VERSION}"
+          text = Path("pylabrobot/__version__.py").read_text()
+          match = re.search(r'__version__\s*=\s*"([^"]+)"', text)
+          if match is None:
+              raise SystemExit("Could not find __version__ in pylabrobot/__version__.py")
 
-          new_text, count = re.subn(
-              r'__version__\s*=\s*"[^"]+"',
-              f'__version__ = "{version}"',
-              text,
-          )
+          committed = match.group(1)
+          if Version(committed) != Version(tag_version):
+              raise SystemExit(
+                  f"Version mismatch: pylabrobot/__version__.py is {committed!r} but the tag "
+                  f"is {tag_version!r}. Bump it with 'just tagnewversion v{tag_version}' rather "
+                  f"than tagging by hand."
+              )
 
-          if count != 1:
-              raise SystemExit(f"Expected to replace exactly one __version__, replaced {count}")
-
-          path.write_text(new_text)
+          print(f"Committed version {committed} matches tag {tag_version}")
           PY
-
-          cat pylabrobot/__version__.py
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
