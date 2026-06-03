@@ -48,24 +48,24 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Release tag: $TAG"
 
-      - name: Verify tag points to current prod
+      - name: Verify tag points to current publish
         shell: bash
         run: |
           set -euo pipefail
 
           TAG="${{ steps.release_tag.outputs.tag }}"
 
-          git fetch origin prod --depth=1
+          git fetch origin publish --depth=1
 
           TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
-          PROD_COMMIT="$(git rev-parse origin/prod)"
+          PUBLISH_COMMIT="$(git rev-parse origin/publish)"
 
-          echo "Tag:         $TAG"
-          echo "Tag commit:  $TAG_COMMIT"
-          echo "Prod commit: $PROD_COMMIT"
+          echo "Tag:            $TAG"
+          echo "Tag commit:     $TAG_COMMIT"
+          echo "Publish commit: $PUBLISH_COMMIT"
 
-          if [ "$TAG_COMMIT" != "$PROD_COMMIT" ]; then
-            echo "Refusing to publish: release tag must point at current origin/prod."
+          if [ "$TAG_COMMIT" != "$PUBLISH_COMMIT" ]; then
+            echo "Refusing to publish: release tag must point at current origin/publish."
             exit 1
           fi
 
