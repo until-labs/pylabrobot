@@ -1,3 +1,4 @@
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.height_volume_functions import (
   compute_height_from_volume_rectangle,
   compute_volume_from_height_rectangle,
@@ -9,6 +10,7 @@ from pylabrobot.resources.well import (
   Well,
   WellBottomType,
 )
+@compact_factory
 def Hamilton_1_troughplate_300ml(name: str) -> Plate:
   """
   Part # 56669-01 (slightly modified to allow dispensing with 96 head)

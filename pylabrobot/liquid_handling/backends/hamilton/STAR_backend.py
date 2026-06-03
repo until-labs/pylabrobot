@@ -3271,6 +3271,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     pickup_distance_from_top: float,
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
+    z_press_on_distance: float = 0.0,
     return_tool: bool = True,
   ):
     """Place resource with CoRe gripper tool
@@ -3285,8 +3286,13 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         between 0 and 360.0.
       z_position_at_the_command_end: Minimum z-Position at end of a command [mm] (refers to all
         channels independent of tip pattern parameter 'tm'). Must be between 0 and 360.0
+      z_press_on_distance: Downward press distance after placing and before releasing [mm]. Must
+        be between 0 and 5.0.
       return_tool: Return tool to wasteblock mount after placing. Default True.
     """
+
+    if not 0 <= z_press_on_distance <= 5.0:
+      raise ValueError("z_press_on_distance must be between 0 and 5.0")
 
     # Get center of destination location. Also gripping height and plate width.
     grip_height = location.z + resource.get_absolute_size_z() - pickup_distance_from_top
@@ -3297,7 +3303,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       x_direction=0,
       y_position=round(location.y * 10),
       z_position=round(grip_height * 10),
-      z_press_on_distance=0,
+      z_press_on_distance=round(z_press_on_distance * 10),
       z_speed=500,
       open_gripper_position=round(grip_width * 10) + 30,
       minimum_traverse_height_at_beginning_of_a_command=round(
@@ -3477,6 +3483,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     return_core_gripper: bool = True,
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
+    z_press_on_distance: float = 0.0,
     open_gripper_position: Optional[float] = None,
     hotel_depth=160.0,
     hotel_clearance_height=7.5,
@@ -3495,6 +3502,9 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     # The resource is moved by drop.rotation
     # The new resource absolute location is
     # drop.resource.get_absolute_rotation().z + drop.rotation
+    if use_arm == "iswap" and z_press_on_distance != 0.0:
+      raise ValueError("z_press_on_distance is only supported with use_arm='core'")
+
     center_in_absolute_space = drop.resource.center().rotated(
       Rotation(z=drop.resource.get_absolute_rotation().z + drop.rotation)
     )
@@ -3588,6 +3598,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         pickup_distance_from_top=drop.pickup_distance_from_top,
         minimum_traverse_height_at_beginning_of_a_command=self._iswap_traversal_height,
         z_position_at_the_command_end=self._iswap_traversal_height,
+        z_press_on_distance=z_press_on_distance,
         # int(previous_location.z + move.resource.get_size_z() / 2) * 10,
         return_tool=return_core_gripper,
       )
@@ -3677,6 +3688,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     resource: Resource,
     gripper_y_margin: float = 0.5,
     offset: Coordinate = Coordinate.zero(),
+    z_speed: float = 60.0,
     minimum_traverse_height_at_beginning_of_a_command: float = 275.0,
     z_position_at_the_command_end: float = 275.0,
     enable_recovery: bool = True,
@@ -3694,6 +3706,9 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       gripper_y_margin = Distance between the front / back wall of the resource
         and the grippers during "bumping" / checking
       offset: Offset from resource position in mm.
+      z_speed: Descent speed of the gripper paddles in mm/s. Lower values produce a quieter,
+        lighter tap on contact. Must be between 0 and 128.7 mm/s. Default 60.0 mm/s
+        (matches the VENUS `check_plate` default).
       minimum_traverse_height_at_beginning_of_a_command: Minimum traverse height at beginning of
         a command [mm] (refers to all channels independent of tip pattern parameter 'tm').
         Must be between 0 and 360.0.
@@ -3713,6 +3728,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       f"width between channels must be between 9 and {resource.get_absolute_size_y()} mm"
       " (i.e. the minimal distance between channels and the max y size of the resource"
     )
+    assert 0 < z_speed <= 128.7, "z_speed must be > 0 and <= 128.7 mm/s"
 
     # Check if CoRe gripper currently in use
     cores_used = not self._core_parked
@@ -3733,7 +3749,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
           # Set default values based on VENUS check_plate commands
           y_gripping_speed=50,
           x_direction=0,
-          z_speed=600,
+          z_speed=round(z_speed * 10),
           grip_strength=20,
           # Enable mods of channel z position for check acceleration
           minimum_traverse_height_at_beginning_of_a_command=round(
@@ -5504,7 +5520,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     assert 0 <= x_direction <= 1, "x_direction must be between 0 and 1"
     assert 0 <= y_position <= 6500, "y_position must be between 0 and 6500"
     assert 0 <= z_position <= 3600, "z_position must be between 0 and 3600"
-    assert 0 <= z_press_on_distance <= 50, "z_press_on_distance must be between 0 and 999"
+    assert 0 <= z_press_on_distance <= 50, "z_press_on_distance must be between 0 and 50"
     assert 0 <= z_speed <= 1600, "z_speed must be between 0 and 1600"
     assert 0 <= open_gripper_position <= 9999, "open_gripper_position must be between 0 and 9999"
     assert (

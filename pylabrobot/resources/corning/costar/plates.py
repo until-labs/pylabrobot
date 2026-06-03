@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.height_volume_functions import (
   compute_height_from_volume_conical_frustum,
   compute_volume_from_height_conical_frustum,
@@ -83,6 +84,7 @@ def Cor_Cos_6_wellplate_16800ul_Fb_Lid(name: str) -> Lid:
 # # # # # # # # # # Cor_12_wellplate_6900ul_Fb # # # # # # # # # #
 
 
+@compact_factory
 def Cor_Cos_12_wellplate_6900ul_Fb(name: str, lid: Optional[Lid] = None) -> Plate:
   """
   Corning cat. no.s: 3336, 3512, 3513

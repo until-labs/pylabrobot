@@ -6,6 +6,7 @@ from pylabrobot.resources.carrier import (
   MFXCarrier,
   ResourceHolder,
 )
+from pylabrobot.resources.compact import compact_factory
 
 
 def hamilton_mfx_carrier_L5_base(name: str, modules: Dict[int, ResourceHolder]) -> MFXCarrier:
@@ -42,6 +43,7 @@ def hamilton_mfx_carrier_L5_base(name: str, modules: Dict[int, ResourceHolder]) 
   )
 
 
+@compact_factory
 def MFX_CAR_L4_SHAKER(name: str, modules: Dict[int, ResourceHolder]) -> MFXCarrier:
   """Hamilton cat. no.: 187001
   Sometimes referred to as "PLT_CAR_L4_SHAKER" by Hamilton.
