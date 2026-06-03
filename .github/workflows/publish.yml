@@ -177,7 +177,7 @@ jobs:
       contents: read
       id-token: write
 
-    environment: pyx-production
+    environment: pyx-publish
 
     steps:
       - name: Check out repository
