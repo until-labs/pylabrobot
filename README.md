@@ -1,216 +1,134 @@
-<div style="text-align: center" align="center">
-<img width="400" src=".github/img/logo.png" />
-</div>
+# PyLabRobot — until-labs internal fork
 
-<div style="text-align: center" align="center">
-<a href="https://docs.pylabrobot.org"><strong>Docs</strong></a> |
-<a href="https://discuss.pylabrobot.org"><strong>Forum</strong></a> |
-<a href="https://docs.pylabrobot.org/user_guide/_getting-started/installation.html"><strong>Installation</strong></a> |
-<a href="https://docs.pylabrobot.org/basic.html"><strong>Getting started</strong></a>
-</div>
+Internal fork of [PyLabRobot](https://github.com/pylabrobot/pylabrobot), maintained by Until Labs.
 
-## What is PyLabRobot?
+- **Upstream docs:** https://docs.pylabrobot.org
+- **Upstream repo:** https://github.com/pylabrobot/pylabrobot
 
-PyLabRobot is a hardware agnostic, pure Python library for liquid handling robots, plate readers, pumps, scales, heater shakers, and other lab automation equipment. Read [the paper](<https://www.cell.com/device/fulltext/S2666-9986(23)00170-9>) in Device.
-
-Advantages over proprietary software:
-
-- **Cross-platform**: PyLabRobot works on Windows, macOS, and Linux. Many other interfaces are Windows-only.
-- **Universal**: PyLabRobot works with any supported liquid handling robot, plate reader, pump, scale, heater shaker, etc. through a single interface.
-- **Fast iteration**: PyLabRobot enables rapid development of protocols using atomic commands run interactively in Jupyter notebooks or the Python REPL. This decreases iteration time from minutes to seconds.
-- **Open-source**: PyLabRobot is open-source and free to use.
-- **Control**: With Python, you have ultimate flexibility to control your lab automation equipment. You can write Turing-complete protocols that include feedback loops.
-- **Modern**: PyLabRobot is built on modern Python 3.9+ features and async/await syntax.
-- **Fast support**: PyLabRobot has [an active community forum](https://discuss.pylabrobot.org) for support and discussion, and most pull requests are merged within a day.
-
-### Liquid handling robots ([docs](https://docs.pylabrobot.org/user_guide/00_liquid-handling/_liquid-handling.html))
-
-PyLabRobot enables the use of any liquid handling robot through a single universal interface, that works on any modern operating system (Windows, macOS, Linux). We currently support Hamilton STAR, Hamilton Vantage, Tecan Freedom EVO, and Opentrons OT-2 robots, but we will soon support many more.
-
-Here's a quick example showing how to move 100uL of liquid from well A1 to A2 using firmware on **Hamilton STAR** (this will work on any operating system!):
-
-```python
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.liquid_handling.backends import STARBackend
-from pylabrobot.resources import Deck
-
-deck = Deck.load_from_json_file("hamilton-layout.json")
-lh = LiquidHandler(backend=STARBackend(), deck=deck)
-await lh.setup()
-
-await lh.pick_up_tips(lh.deck.get_resource("tip_rack")["A1"])
-await lh.aspirate(lh.deck.get_resource("plate")["A1"], vols=100)
-await lh.dispense(lh.deck.get_resource("plate")["A2"], vols=100)
-await lh.return_tips()
-```
-
-To run the same protocol on an **Opentrons**, use the following:
-
-```python
-from pylabrobot.liquid_handling.backends import OpentronsOT2Backend
-deck = Deck.load_from_json_file("opentrons-layout.json")
-lh = LiquidHandler(backend=OpentronsOT2Backend(host="x.x.x.x"), deck=deck)
-```
-
-Or **Tecan** (also works on any operating system!):
-
-```python
-from pylabrobot.liquid_handling.backends import EVOBackend
-deck = Deck.load_from_json_file("tecan-layout.json")
-lh = LiquidHandler(backend=EVOBackend(), deck=deck)
-```
-
-We also provide a browser-based Visualizer which can visualize the state of the deck during a run, and can be used to develop and test protocols without a physical robot.
-
-![Visualizer](.github/img/visualizer.png)
-
-### Plate readers ([docs](https://docs.pylabrobot.org/user_guide/02_analytical/plate-reading/plate-reading.html))
-
-Moving a plate to a ClarioStar using a liquid handler, and reading luminescence:
-
-```python
-from pylabrobot.plate_reading import PlateReader, CLARIOstarBackend
-
-pr = PlateReader(name="plate reader", backend=CLARIOstarBackend(), size_x=1, size_y=1, size_z=1)
-await pr.setup()
-
-# Use in combination with a liquid handler
-lh.assign_child_resource(pr, location=Coordinate(x, y, z))
-lh.move_plate(lh.deck.get_resource("plate"), pr)
-
-data = await pr.read_luminescence()
-```
-
-For Cytation5, use the `Cytation5` backend.
-
-### Centrifuges ([docs](https://docs.pylabrobot.org/user_guide/01_material-handling/centrifuge/_centrifuge.html))
-
-Centrifugation at 800g for 60 seconds:
-
-```python
-from pylabrobot.centrifuge import Centrifuge, VSpin
-cf = Centrifuge(backend=VSpin(bucket_1_position=0), name="centrifuge", size_x=1, size_y=1, size_z=1)
-await cf.setup()
-
-await cf.start_spin_cycle(g = 800, duration = 60)
-```
-
-### Pumps ([docs](https://docs.pylabrobot.org/user_guide/00_liquid-handling/pumps/_pumps.html))
-
-Pumping at 100 rpm for 30 seconds using a Masterflex pump:
-
-```python
-from pylabrobot.pumps import Pump
-from pylabrobot.pumps.cole_parmer.masterflex import Masterflex
-
-p = Pump(backend=Masterflex())
-await p.setup()
-await p.run_for_duration(speed=100, duration=30)
-```
-
-### Scales ([docs](https://docs.pylabrobot.org/user_guide/02_analytical/scales.html))
-
-Taking a measurement from a Mettler Toledo scale:
-
-```python
-from pylabrobot.scales import Scale
-from pylabrobot.scales.mettler_toledo import MettlerToledoWXS205SDU
-
-backend = MettlerToledoWXS205SDU(port="/dev/cu.usbserial-110")
-scale = Scale(backend=backend, size_x=0, size_y=0, size_z=0)
-await scale.setup()
-
-weight = await scale.get_weight()
-```
-
-### Heater shakers ([docs](https://docs.pylabrobot.org/user_guide/01_material-handling/heating-shaking.html))
-
-Setting the temperature of a heater shaker to 37&deg;C:
-
-```python
-from pylabrobot.heating_shaking import HeaterShaker, InhecoThermoShakeBackend
-
-backend = InhecoThermoShakeBackend()
-hs = HeaterShaker(backend=backend, name="HeaterShaker", size_x=0, size_y=0, size_z=0)
-await hs.setup()
-await hs.set_temperature(37)
-```
-
-### Fans ([docs](https://docs.pylabrobot.org/user_guide/01_material-handling/fans/fans.html))
-
-Running a fan at 100% intensity for one minute:
-
-```python
-from pylabrobot.only_fans import Fan
-from pylabrobot.only_fans import HamiltonHepaFanBackend
-
-fan = Fan(backend=HamiltonHepaFanBackend(), name="my fan")
-await fan.setup()
-await fan.turn_on(intensity=100, duration=60)
-```
-
-### Thermocyclers ([docs](https://docs.pylabrobot.org/user_guide/01_material-handling/thermocycling/thermocycling.html))
-
-Running a thermocycler with a simple protocol:
-
-```python
-await tc.run_pcr_profile(
-  denaturation_temp=98.0,
-  denaturation_time=10.0,
-  annealing_temp=55.0,
-  annealing_time=30.0,
-  extension_temp=72.0,
-  extension_time=60.0,
-  num_cycles=2,
-  block_max_volume=25.0,
-  lid_temperature=105.0,
-  pre_denaturation_temp=95.0,
-  pre_denaturation_time=180.0,
-  final_extension_temp=72.0,
-  final_extension_time=300.0,
-  storage_temp=4.0,
-  storage_time=600.0,
-)
-```
-
-## Resources
-
-### Documentation
-
-[docs.pylabrobot.org](https://docs.pylabrobot.org)
-
-- [Installation](https://docs.pylabrobot.org/user_guide/_getting-started/installation.html)
-- [Getting Started](https://docs.pylabrobot.org/user_guide/index.html)
-- [Contributing](https://docs.pylabrobot.org/contributor_guide/index.html)
-- [API Reference](https://docs.pylabrobot.org/api/pylabrobot.html)
-
-### Support
-
-- [discuss.pylabrobot.org](https://discuss.pylabrobot.org) for questions and discussions.
-- [GitHub Issues](https://github.com/pylabrobot/pylabrobot/issues) for bug reports and feature requests.
-
-## Citing
-
-If you use PyLabRobot in your research, please cite the following:
-
-```bibtex
-@article{WIERENGA2023100111,
-  title = {PyLabRobot: An open-source, hardware-agnostic interface for liquid-handling robots and accessories},
-  journal = {Device},
-  volume = {1},
-  number = {4},
-  pages = {100111},
-  year = {2023},
-  issn = {2666-9986},
-  doi = {https://doi.org/10.1016/j.device.2023.100111},
-  url = {https://www.sciencedirect.com/science/article/pii/S2666998623001709},
-  author = {Rick P. Wierenga and Stefan M. Golas and Wilson Ho and Connor W. Coley and Kevin M. Esvelt},
-  keywords = {laboratory automation, open source, standardization, liquid-handling robots},
-}
-```
+> PyLabRobot is a hardware-agnostic, pure-Python interface for liquid-handling robots,
+> plate readers, pumps, scales, heater-shakers, centrifuges, thermocyclers, and other lab
+> automation hardware.
 
 ---
 
-**Disclaimer:** PyLabRobot is not officially endorsed or supported by any robot manufacturer. If you use a firmware driver such as the STAR driver provided here, you do so at your own risk. Usage of a firmware driver such as STAR may invalidate your warranty. Please contact us with any questions.
+## Installation
 
-_Developed for the Sculpting Evolution Group at the MIT Media Lab_
+Releases are published to the until-labs **pyx** index.
+
+**From pyx (preferred).** Configure `uv` to use the until-labs pyx index (token-based auth),
+then:
+
+```bash
+uv pip install pylabrobot
+```
+
+**One off** Requires access to the repo:
+
+```bash
+uv pip install "git+ssh://git@github.com/until-labs/pylabrobot.git@v0.1.7.dev15"
+```
+
+Replace the tag with the version you want (see the repo's tags).
+
+---
+
+## Releasing a new version
+
+This is what differs most from upstream. **The published version is driven by the git tag,
+and the committed version file must match it — CI enforces this and never rewrites it.**
+
+### Source of truth
+
+- The version lives in **`pylabrobot/__version__.py`** (`pyproject.toml` has no version field;
+  `setup.py` reads `__version__.py`).
+- A release tag `vX.Y.Z` must point at a commit whose `__version__.py` already says `X.Y.Z`.
+- `publish.yml` **verifies** this and refuses to publish on a mismatch. (It used to overwrite
+  the file at build time — it no longer does, so the committed version is now honest and what
+  source/`pip` installs report is correct.)
+
+### Cut a release with `just`
+
+From the branch you release from (currently **`arvind-dev`**), with a clean working tree and
+up to date with origin:
+
+```bash
+just tagnewversion v0.1.7.dev16
+```
+
+This:
+
+1. bumps `pylabrobot/__version__.py` to `0.1.7.dev16` and commits it (`Release v0.1.7.dev16`),
+2. fast-forwards `publish` to that commit,
+3. atomically pushes the branch, `publish`, and the tag.
+
+Pushing the `v*` tag triggers `.github/workflows/publish.yml`, which then:
+
+- checks the tag points at the tip of `origin/publish` (the publish gate),
+- checks `__version__.py` matches the tag (fails fast otherwise),
+- runs the test suite, builds the wheel + sdist, and verifies the built artifact's version,
+- publishes to pyx via trusted publishing (the `pyx-publish` GitHub environment).
+
+Set `YES=1 just tagnewversion …` to skip the confirmation prompt. Run `just` with no args to
+list recipes.
+
+### Branch model
+
+`publish` is a pointer that **trails the release branch** — it always equals the commit
+currently published. `just tagnewversion` fast-forwards it for you; don't move it by hand.
+Note that `main` is **not** the release line here (`publish` isn't even an ancestor of `main`);
+releases are currently cut from `arvind-dev`, and every `v0.1.7.dev*` tag lives on that line.
+
+### Tagging by hand is discouraged
+
+If you create a tag without `just tagnewversion`, the commit's `__version__.py` must already
+match the tag or CI fails with, e.g.:
+
+```
+Version mismatch: pylabrobot/__version__.py is '0.1.7.dev15' but the tag is '0.1.7.dev16'.
+Bump it with 'just tagnewversion v0.1.7.dev16' rather than tagging by hand.
+```
+
+Just use the recipe — it keeps the file, `publish`, and the tag consistent.
+
+---
+
+## What's different from upstream
+
+Changes layered on top of upstream PyLabRobot in this fork:
+
+### Release & packaging
+
+- **Auto-publish to pyx** on `v*` tags — `.github/workflows/publish.yml`.
+- **Tag-driven versioning with CI enforcement.** The workflow verifies `__version__.py == tag`
+  rather than overwriting it, and **`just tagnewversion`** (`justfile`) is the one-command
+  release path: bump → fast-forward `publish` → push branch + tag atomically.
+
+### Serializer deserialization fix — `pylabrobot/serializer.py`
+
+`get_plr_class_from_string()` imported a fixed list of submodules unconditionally. Three of
+them (`gui`, `testing`, `tests`) are **not shipped in built wheels** (no `__init__.py`), and
+three more (`pumps`, `storage`, `only_fans`) **eagerly import optional firmware deps**
+(`pyserial`, `pylibftdi`). On a plain `pip install pylabrobot`, that made **every**
+`deserialize()` / `Resource.load_state()` raise `ModuleNotFoundError`. The bug was invisible
+in editable/source installs, which resolve those directories as PEP-420 namespace packages.
+
+Fix: each submodule is now imported defensively (`importlib.import_module` inside
+`try/except ImportError`), so a missing module or absent optional dependency can no longer
+break deserialization.
+
+### Hardware / behavior (from internal feature branches)
+
+- Surfacing parameters — `z_press_on_distance`, surface z-speed on the CoRe check.
+- Compact `Resource` serializer.
+- Added resources — Nunc 96-well flat-bottom plate (165305), Hamilton reservoir/trough.
+
+---
+
+## Syncing with upstream
+
+```bash
+git remote add upstream https://github.com/pylabrobot/pylabrobot.git  # if not already set
+git fetch upstream
+git merge upstream/main      # onto the release branch, resolve, run `make test`,
+                             # then cut a new version with `just tagnewversion …`
+```
