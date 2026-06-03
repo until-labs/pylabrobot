@@ -131,11 +131,14 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
+      - name: Create virtual environment
+        run: uv venv --python 3.12
+
       - name: Install package with dev extras
-        run: uv pip install --system -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: Run tests
-        run: uv run --system pytest
+        run: uv run pytest
 
       - name: Build distributions
         run: uv build
@@ -147,9 +150,9 @@ jobs:
 
           VERSION="${{ steps.version.outputs.version }}"
 
-          uv pip install --system --force-reinstall dist/*.whl
+          uv pip install --force-reinstall dist/*.whl
 
-          python - <<PY
+          uv run python - <<PY
           import importlib.metadata
 
           expected = "${VERSION}"
