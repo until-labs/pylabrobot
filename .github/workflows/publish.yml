@@ -1,0 +1,200 @@
+name: Publish to pyx
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, e.g. v0.1.7.post1"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build:
+    name: Test and build distributions
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve release tag
+        id: release_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+            git checkout "$TAG"
+          else
+            TAG="$GITHUB_REF_NAME"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG"
+
+      - name: Verify tag points to current publish
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${{ steps.release_tag.outputs.tag }}"
+
+          git fetch origin publish --depth=1
+
+          TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
+          PUBLISH_COMMIT="$(git rev-parse origin/publish)"
+
+          echo "Tag:            $TAG"
+          echo "Tag commit:     $TAG_COMMIT"
+          echo "Publish commit: $PUBLISH_COMMIT"
+
+          if [ "$TAG_COMMIT" != "$PUBLISH_COMMIT" ]; then
+            echo "Refusing to publish: release tag must point at current origin/publish."
+            exit 1
+          fi
+
+      - name: Derive package version from tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${{ steps.release_tag.outputs.tag }}"
+
+          case "$TAG" in
+            v*) VERSION="${TAG#v}" ;;
+            *)
+              echo "Release tag must start with v, got: $TAG"
+              exit 1
+              ;;
+          esac
+
+          python -m pip install packaging
+          python - <<PY
+          from packaging.version import Version
+          Version("${VERSION}")
+          PY
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version: $VERSION"
+
+      - name: Set package version from tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ steps.version.outputs.version }}"
+
+          python - <<PY
+          from pathlib import Path
+          import re
+
+          version = "${VERSION}"
+          path = Path("pylabrobot/__version__.py")
+          text = path.read_text()
+
+          new_text, count = re.subn(
+              r'__version__\s*=\s*"[^"]+"',
+              f'__version__ = "{version}"',
+              text,
+          )
+
+          if count != 1:
+              raise SystemExit(f"Expected to replace exactly one __version__, replaced {count}")
+
+          path.write_text(new_text)
+          PY
+
+          cat pylabrobot/__version__.py
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ">=0.9.27"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install package with dev extras
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Run tests
+        run: uv run --system pytest
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Verify built package version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ steps.version.outputs.version }}"
+
+          uv pip install --system --force-reinstall dist/*.whl
+
+          python - <<PY
+          import importlib.metadata
+
+          expected = "${VERSION}"
+          actual = importlib.metadata.version("PyLabRobot")
+
+          if actual != expected:
+              raise SystemExit(f"Version mismatch: expected {expected}, got {actual}")
+
+          print(f"Verified PyLabRobot=={actual}")
+          PY
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dists
+          path: dist/
+          if-no-files-found: error
+
+  pyx-publish:
+    name: Publish distributions to pyx
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    environment: pyx-production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ">=0.9.27"
+
+      - name: Download distributions
+        uses: actions/download-artifact@v5
+        with:
+          name: dists
+          path: dist/
+
+      - name: Publish to pyx
+        run: uv publish dist/* --publish-url https://api.pyx.dev/v1/upload/until/main --trusted-publishing=always
