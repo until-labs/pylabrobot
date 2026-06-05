@@ -19,9 +19,10 @@ from pylabrobot.resources.hamilton.mfx_carriers import MFX_CAR_L4_SHAKER
 from pylabrobot.resources.hamilton.mfx_modules import MFX_DWP_module_flat
 from pylabrobot.resources.hamilton.plate_carriers import PLT_CAR_L5AC_A00, PLT_CAR_L5PCR
 from pylabrobot.resources.hamilton.plates import Hamilton_1_troughplate_300ml
-from pylabrobot.resources.hamilton.tip_carriers import TIP_CAR_480_A00
+from pylabrobot.resources.hamilton.tip_carriers import TIP_CAR_480_A00, TIP_CAR_NTR_A00
 from pylabrobot.resources.hamilton.tip_racks import (
   hamilton_96_tiprack_50uL_filter,
+  hamilton_96_tiprack_50uL_NTR,
   hamilton_96_tiprack_300uL_filter,
   hamilton_96_tiprack_1000uL_filter,
 )
@@ -36,6 +37,7 @@ _LEAF_BUILDERS = [
   lambda n: Eppendorf_96_wellplate_250ul_Vb_semiskirted(name=n),
   lambda n: Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name=n),
   lambda n: hamilton_96_tiprack_50uL_filter(name=n),
+  lambda n: hamilton_96_tiprack_50uL_NTR(name=n),
   lambda n: hamilton_96_tiprack_300uL_filter(name=n),
   lambda n: hamilton_96_tiprack_1000uL_filter(name=n),
   lambda n: nest_12_troughplate_15000uL_Vb(name=n),
@@ -50,6 +52,7 @@ _CARRIER_BUILDERS = [
   lambda n: PLT_CAR_L5AC_A00(name=n),
   lambda n: PLT_CAR_L5PCR(name=n),
   lambda n: TIP_CAR_480_A00(name=n),
+  lambda n: TIP_CAR_NTR_A00(name=n),
 ]
 
 
@@ -212,6 +215,22 @@ class TestFullDeckRoundTrip(unittest.TestCase):
     restored = Resource.deserialize_compact(blob)
     self.assertEqual(deck, restored)
 
+  def test_ntr_carrier_with_nested_tip_rack_round_trips(self):
+    """A TIP_CAR_NTR_A00 holding a nested tip rack now round-trips: both the carrier
+    and the NTR factory are @compact_factory-labeled, so the carrier no longer
+    silently vanishes from the deck blob. (A *stack* of NTRs on one site round-trips
+    too — see TestStackedResourceRoundTrip.)"""
+    deck = STARDeck()
+    carrier = TIP_CAR_NTR_A00(name="tip_car_ntr")
+    carrier[0] = hamilton_96_tiprack_50uL_NTR(name="ntr_bottom")
+    deck.assign_child_resource(carrier, rails=25)
+
+    blob = deck.serialize_compact()
+    self.assertIn("tip_car_ntr", [c["name"] for c in blob["children"]])
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(deck, restored)
+    self.assertEqual(restored.get_resource("ntr_bottom").name, "ntr_bottom")
+
   def test_compact_blob_is_orders_of_magnitude_smaller_than_verbose(self):
     """Sanity check: the whole point of the compact format is size reduction."""
     import json
@@ -228,6 +247,39 @@ class TestFullDeckRoundTrip(unittest.TestCase):
     self.assertGreater(len(verbose) / len(compact), 50)
 
 
+class TestStackedResourceRoundTrip(unittest.TestCase):
+  """A resource stacked directly on another (NestedTipRack on an NTR) round-trips:
+  the stacked child is recorded under ``stacked`` with its location, not dropped."""
+
+  def test_two_high_ntr_stack_round_trips(self):
+    bottom = hamilton_96_tiprack_50uL_NTR(name="ntr_bottom")
+    top = hamilton_96_tiprack_50uL_NTR(name="ntr_top")
+    bottom.assign_child_resource(top)  # NestedTipRack auto-stacks via stacking_z_height
+    blob = bottom.serialize_compact()
+    self.assertEqual([s["name"] for s in blob["stacked"]], ["ntr_top"])
+    self.assertEqual(blob["stacked"][0]["location"], [0.0, 0.0, top.location.z])
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(bottom, restored)
+
+  def test_stacked_ntr_on_carrier_on_deck(self):
+    """The full scenario: two NTRs stacked at slot 0 of a TIP_CAR_NTR_A00 on a deck.
+    The stack survives the carrier->site->stacked recursion end to end."""
+    deck = STARDeck()
+    carrier = TIP_CAR_NTR_A00(name="tip_car_ntr")
+    bottom = hamilton_96_tiprack_50uL_NTR(name="ntr_bottom")
+    top = hamilton_96_tiprack_50uL_NTR(name="ntr_top")
+    carrier[0] = bottom
+    bottom.assign_child_resource(top)
+    deck.assign_child_resource(carrier, rails=25)
+
+    blob = deck.serialize_compact()
+    slot0 = blob["children"][0]["assignments"]["0"]
+    self.assertEqual([s["name"] for s in slot0["stacked"]], ["ntr_top"])
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(deck, restored)
+    self.assertEqual(restored.get_resource("ntr_top").name, "ntr_top")
+
+
 class TestErrorHandling(unittest.TestCase):
   """Resources built outside a labeled factory raise a clear error."""
 
@@ -237,6 +289,19 @@ class TestErrorHandling(unittest.TestCase):
     with self.assertRaises(ValueError) as cm:
       r.serialize_compact()
     self.assertIn("@compact_factory", str(cm.exception))
+
+  def test_unlabeled_carrier_on_deck_raises(self):
+    # A carrier placed on the deck without a labeled factory would otherwise be
+    # silently dropped (it and everything on it) — serialize_compact must refuse
+    # loudly rather than emit a deck blob that's quietly missing the carrier.
+    deck = STARDeck()
+    carrier = TIP_CAR_480_A00(name="orphan_carrier")
+    carrier._factory_qn = None  # simulate a carrier built outside a labeled factory
+    deck.assign_child_resource(carrier, rails=25)
+    with self.assertRaises(ValueError) as cm:
+      deck.serialize_compact()
+    self.assertIn("@compact_factory", str(cm.exception))
+    self.assertIn("orphan_carrier", str(cm.exception))
 
   def test_deserialize_rejects_missing_marker(self):
     blob = {"factory": "pylabrobot.resources.resource.Resource", "name": "x"}

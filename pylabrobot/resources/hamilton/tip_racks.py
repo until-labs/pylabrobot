@@ -139,6 +139,7 @@ def hamilton_96_tiprack_50uL(name: str, with_tips: bool = True) -> TipRack:
   )
 
 
+@compact_factory
 def hamilton_96_tiprack_50uL_NTR(name: str, with_tips: bool = True) -> NestedTipRack:
   """Hamilton cat. no.: 235947 (non-sterile), 235964 (clear, non-sterile), 235987 (sterile)
   Nested Tip Rack with 96x 50ul Tips

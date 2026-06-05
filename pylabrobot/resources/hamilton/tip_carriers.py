@@ -332,6 +332,7 @@ def TIP_CAR_96BC_5mlT_A00(name: str) -> TipCarrier:
   )
 
 
+@compact_factory
 def TIP_CAR_NTR_A00(name: str) -> TipCarrier:
   """Carrier with 5 nestable tip rack positions"""
   return TipCarrier(
