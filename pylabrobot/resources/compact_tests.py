@@ -279,6 +279,21 @@ class TestStackedResourceRoundTrip(unittest.TestCase):
     self.assertEqual(deck, restored)
     self.assertEqual(restored.get_resource("ntr_top").name, "ntr_top")
 
+  def test_three_high_ntr_stack_round_trips(self):
+    """Depth-agnostic: a 3-high chain is recorded as nested ``stacked`` blobs and rebuilt as a
+    proper bottom -> mid -> top chain."""
+    bottom = hamilton_96_tiprack_50uL_NTR(name="ntr_bottom")
+    mid = hamilton_96_tiprack_50uL_NTR(name="ntr_mid")
+    top = hamilton_96_tiprack_50uL_NTR(name="ntr_top")
+    bottom.assign_child_resource(mid)
+    mid.assign_child_resource(top)
+    blob = bottom.serialize_compact()
+    self.assertEqual([s["name"] for s in blob["stacked"]], ["ntr_mid"])
+    self.assertEqual([s["name"] for s in blob["stacked"][0]["stacked"]], ["ntr_top"])
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(bottom, restored)
+    self.assertIs(restored.get_stack_top(), restored.get_resource("ntr_top"))
+
 
 class TestErrorHandling(unittest.TestCase):
   """Resources built outside a labeled factory raise a clear error."""

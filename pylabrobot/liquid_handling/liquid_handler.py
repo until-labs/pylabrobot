@@ -42,6 +42,7 @@ from pylabrobot.resources import (
   Coordinate,
   Deck,
   Lid,
+  NestedResource,
   Plate,
   PlateAdapter,
   PlateHolder,
@@ -2209,6 +2210,15 @@ class LiquidHandler(Resource, Machine):
         lid.rotated(z=resource_rotation_wrt_destination_wrt_local)
       ).rotated(destination.get_absolute_rotation())
       to_location = plate_location + child_wrt_parent
+    elif isinstance(destination, NestedResource):
+      # Nestable labware nests onto the *current top* of the chain at a fixed pitch
+      # (stacking_z_height), not onto destination's base. Structurally identical to the
+      # ResourceHolder branch, but the effective parent is the chain top (at any depth).
+      top = destination.get_stack_top()
+      child_wrt_parent = top.get_default_child_location(
+        resource.rotated(z=resource_rotation_wrt_destination_wrt_local)
+      ).rotated(top.get_absolute_rotation())
+      to_location = top.get_location_wrt(self.deck) + child_wrt_parent
     else:
       to_location = destination.get_location_wrt(self.deck)
 
@@ -2257,6 +2267,11 @@ class LiquidHandler(Resource, Machine):
       destination.assign_child_resource(resource)
     elif isinstance(destination, Trash):
       pass  # don't assign to trash, resource will simply be unassigned
+    elif isinstance(destination, NestedResource):
+      # Nest under the *current* chain top (recomputed; nothing has been assigned yet) at the same
+      # pitch the build path uses, so an N-high stack stays a proper parent->child chain.
+      top = destination.get_stack_top()
+      top.assign_child_resource(resource, location=top.get_default_child_location(resource))
     else:
       destination.assign_child_resource(resource, location=to_location)
 

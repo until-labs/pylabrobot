@@ -26,6 +26,7 @@ from .hamilton import *
 from .itemized_resource import ItemizedResource
 from .liquid import Liquid
 from .nest import *
+from .nested_resource import NestedResource
 from .opentrons import *
 from .perkin_elmer import *
 from .petri_dish import PetriDish, PetriDishHolder

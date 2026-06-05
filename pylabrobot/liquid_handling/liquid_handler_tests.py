@@ -22,6 +22,7 @@ from pylabrobot.resources import (
   Lid,
   Liquid,
   Plate,
+  Resource,
   ResourceNotFoundError,
   ResourceStack,
   TipRack,
@@ -36,10 +37,13 @@ from pylabrobot.resources.errors import (
   NoTipError,
 )
 from pylabrobot.resources.hamilton import (
+  STARDeck,
   STARLetDeck,
+  hamilton_96_tiprack_50uL_NTR,
   hamilton_96_tiprack_300uL_filter,
   hamilton_96_tiprack_1000uL_filter,
 )
+from pylabrobot.resources.hamilton.tip_carriers import TIP_CAR_NTR_A00
 from pylabrobot.resources.utils import create_ordered_items_2d
 from pylabrobot.resources.volume_tracker import (
   set_cross_contamination_tracking,
@@ -447,6 +451,93 @@ class TestLiquidHandlerLayout(unittest.IsolatedAsyncioTestCase):
       deserialized.backend.__class__.__name__,
       self.lh.backend.__class__.__name__,
     )
+
+
+class TestNestedResourceMove(unittest.IsolatedAsyncioTestCase):
+  """``move_resource`` onto a ``NestedResource`` nests at the current chain top +
+  ``stacking_z_height`` at any depth — never the rack's base. The geometry lives entirely in
+  ``drop_resource``, so the no-op ``SaverBackend`` is enough. Reference:
+  ``hamilton_96_tiprack_50uL_NTR`` (``stacking_z_height=16``) on ``STARDeck`` + ``TIP_CAR_NTR_A00``
+  -> bottom origin z=129, then 145 / 161 / 177."""
+
+  async def asyncSetUp(self):
+    self.backend = backends.SaverBackend(num_channels=8)
+    self.deck = STARDeck()
+    self.lh = LiquidHandler(self.backend, deck=self.deck)
+    await self.lh.setup()
+    self.carrier = TIP_CAR_NTR_A00(name="ntr_car")
+    self.deck.assign_child_resource(self.carrier, rails=10)
+    self.bottom = hamilton_96_tiprack_50uL_NTR(name="bottom")
+    self.carrier[0] = self.bottom
+    self._staged = 0
+
+  def _stage(self, name: str):
+    """Place a fresh NTR at a free deck spot so it can be picked up and moved."""
+    rack = hamilton_96_tiprack_50uL_NTR(name=name)
+    self.deck.assign_child_resource(rack, location=Coordinate(700 + 200 * self._staged, 100, 100))
+    self._staged += 1
+    return rack
+
+  async def test_move_onto_bare_nested_resource(self):
+    self.assertEqual(self.bottom.get_absolute_location().z, 129.0)
+    top = self._stage("r2")
+    await self.lh.move_resource(top, to=self.bottom)
+    # lands at base + stacking_z_height, nested *under* the bottom rack (not at its base z=129).
+    self.assertEqual(top.get_absolute_location().z, 145.0)
+    self.assertIs(top.parent, self.bottom)
+    self.assertIs(self.bottom.get_stack_top(), top)
+
+  async def test_move_onto_two_and_three_high(self):
+    r2, r3, r4 = self._stage("r2"), self._stage("r3"), self._stage("r4")
+    await self.lh.move_resource(r2, to=self.bottom)  # 1 -> 2 high
+    await self.lh.move_resource(r3, to=self.bottom)  # nests under current top r2
+    await self.lh.move_resource(r4, to=self.bottom)  # nests under current top r3
+    self.assertEqual(
+      [r.get_absolute_location().z for r in (r2, r3, r4)],
+      [145.0, 161.0, 177.0],
+    )
+    # each nests under the *current* top, so the model stays a proper parent->child chain.
+    self.assertIs(r2.parent, self.bottom)
+    self.assertIs(r3.parent, r2)
+    self.assertIs(r4.parent, r3)
+    self.assertIs(self.bottom.get_stack_top(), r4)
+
+  async def test_round_trip_pick_top_off_and_place_back(self):
+    top = self._stage("r2")
+    await self.lh.move_resource(top, to=self.bottom)
+    original = top.get_absolute_location()
+    # pick it off to a free coordinate -> the stack is bare again
+    await self.lh.move_resource(top, to=Coordinate(1100, 100, 300))
+    self.assertIs(self.bottom.get_stack_top(), self.bottom)
+    # place it back -> returns to its original stacked location
+    await self.lh.move_resource(top, to=self.bottom)
+    self.assertEqual(top.get_absolute_location(), original)
+    self.assertIs(self.bottom.get_stack_top(), top)
+
+  async def test_build_and_move_agree(self):
+    # build path: nest via assign_child_resource on a second, identical rack
+    bottom_build = hamilton_96_tiprack_50uL_NTR(name="bottom_build")
+    self.carrier[1] = bottom_build
+    top_build = hamilton_96_tiprack_50uL_NTR(name="top_build")
+    bottom_build.assign_child_resource(top_build)
+
+    # move path: nest via move_resource
+    top_move = self._stage("top_move")
+    await self.lh.move_resource(top_move, to=self.bottom)
+
+    # both end at the same nested location relative to their (identical) bottom rack.
+    self.assertEqual(top_move.location, top_build.location)
+
+  async def test_move_built_stack_compact_round_trips(self):
+    # a move-built stack is the same tree the build path produces, so it must compact-round-trip.
+    r2 = self._stage("r2")
+    await self.lh.move_resource(r2, to=self.bottom)
+    blob = self.deck.serialize_compact()
+    slot0 = blob["children"][0]["assignments"]["0"]
+    self.assertEqual([s["name"] for s in slot0["stacked"]], ["r2"])
+    restored = Resource.deserialize_compact(blob)
+    self.assertEqual(restored, self.deck)
+    self.assertEqual(restored.get_resource("r2").get_absolute_location().z, 145.0)
 
 
 class TestLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):

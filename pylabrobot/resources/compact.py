@@ -219,7 +219,8 @@ def serialize_compact(resource: "Resource") -> Dict[str, Any]:
   # ``_factory_qn``; a stacked resource built through a labeled factory does — the
   # same marker the deck branch keys on. Recorded under ``stacked`` with each
   # child's ``location`` (mirroring how the deck records ``rails``) so the format
-  # generalizes beyond deterministic NestedTipRack stacking.
+  # spans the whole ``NestedResource`` family (stacked at any depth, by build or by
+  # move) and lids alike, not one concrete rack type.
   #
   # A ResourceHolder is excluded: its single held resource is already recorded by
   # the owning carrier / MFXCarrier via ``assignments`` (e.g. a plate on an MFX

@@ -4,7 +4,6 @@ from abc import ABCMeta
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Sequence, Union, cast
 
-from pylabrobot.resources.coordinate import Coordinate
 from pylabrobot.resources.tip import Tip, TipCreator
 from pylabrobot.resources.tip_tracker import (
   TipTracker,
@@ -13,6 +12,7 @@ from pylabrobot.resources.tip_tracker import (
 from pylabrobot.serializer import deserialize
 
 from .itemized_resource import ItemizedResource
+from .nested_resource import NestedResource
 from .resource import Resource
 
 
@@ -220,8 +220,9 @@ class TipRack(ItemizedResource[TipSpot], metaclass=ABCMeta):
     return [ts.get_tip() for ts in self.get_all_items()]
 
 
-class NestedTipRack(TipRack):
-  """A nested tip rack."""
+class NestedTipRack(NestedResource, TipRack):
+  """A nested tip rack. Nesting behavior (stacking onto another rack at ``stacking_z_height``) is
+  provided by :class:`~.NestedResource`."""
 
   def __init__(
     self,
@@ -251,26 +252,9 @@ class NestedTipRack(TipRack):
 
     self.stacking_z_height = stacking_z_height
 
-  def serialize(self) -> dict:
-    return {**super().serialize(), "stacking_z_height": self.stacking_z_height}
-
   def __repr__(self) -> str:
     return (
       f"{self.__class__.__name__}(name={self.name!r}, size_x={self._size_x}, "
       f"size_y={self._size_y}, size_z={self._size_z}, "
       f"stacking_z_height={self.stacking_z_height}, location={self.location})"
     )
-
-  def assign_child_resource(
-    self,
-    resource: Resource,
-    location: Optional[Coordinate] = None,
-    reassign: bool = True,
-  ):
-    if isinstance(resource, NestedTipRack):
-      location = location or Coordinate(0, 0, self.stacking_z_height)
-    else:
-      assert location is not None, (
-        "Location must be specified if " + "resource is not a NestedTipRack."
-      )
-    return super().assign_child_resource(resource, location=location, reassign=reassign)
