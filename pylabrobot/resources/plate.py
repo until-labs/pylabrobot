@@ -9,6 +9,7 @@ from typing import (
   Optional,
   Sequence,
   Tuple,
+  Type,
   Union,
   cast,
 )
@@ -121,6 +122,11 @@ class Plate(ItemizedResource["Well"]):
   def get_lid_location(self, lid: Lid) -> Coordinate:
     """Get location of the lid when assigned to the plate. Takes into account sinking and rotation."""
     return get_child_location(lid) + Coordinate(0, 0, self.get_size_z() - lid.nesting_z_height)
+
+  def _allowed_child_types(self) -> Tuple[Type[Resource], ...]:
+    from .well import Well  # local import avoids the well<->plate import cycle
+
+    return (Well, Lid)
 
   def assign_child_resource(
     self,

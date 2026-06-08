@@ -61,6 +61,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Resource.get_absolute_location` raises `NoLocationError` instead of `AssertionError` when absolute location is not defined (https://github.com/PyLabRobot/pylabrobot/pull/338)
 - `no_trash` and `no_teaching_rack` were renamed to `with_trash` and `with_teaching_rack` to avoid double negatives (https://github.com/PyLabRobot/pylabrobot/pull/347)
 - `ItemizedResource.row` accepts a string ("A"-"P") in addition to an integer index.
+- `ItemizedResource` subclasses can now restrict their child resource types via an overridable `_allowed_child_types()` method (default permissive). `TipRack` accepts `TipSpot`/`TipRack`, `Plate` accepts `Well`/`Lid`, and `TubeRack` accepts `ResourceHolder`; assigning any other resource type now raises `TypeError`.
 
 ### Added
 

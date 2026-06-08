@@ -6,7 +6,10 @@ from pylabrobot.resources import (
   Coordinate,
   ItemizedResource,
   Plate,
+  PlateCarrier,
   Resource,
+  ResourceHolder,
+  TubeRack,
   Well,
   create_equally_spaced_2d,
   create_ordered_items_2d,
@@ -451,3 +454,29 @@ class TestItemizedResourceTraversal(unittest.TestCase):
       self.assertEqual(len(batch), 5)
       num_batches += 1
     self.assertEqual(len(items), self.ir.num_items * num_rounds)
+
+
+class TestChildTypeValidation(unittest.TestCase):
+  """ItemizedResource subclasses restrict child types; the base stays permissive by default."""
+
+  def test_permissive_default_allows_any_resource(self):
+    # ItemizedResource declares no allowed child types, so it accepts any Resource (back-compat).
+    ir = ItemizedResource("ir", size_x=10, size_y=10, size_z=10, ordered_items={})
+    ir.assign_child_resource(
+      Resource("child", size_x=1, size_y=1, size_z=1), location=Coordinate.zero()
+    )
+    self.assertEqual(len(ir.children), 1)
+
+  def test_tube_rack_rejects_foreign_resource(self):
+    tube_rack = TubeRack("tube_rack", size_x=10, size_y=10, size_z=10, ordered_items={})
+    with self.assertRaises(TypeError):
+      tube_rack.assign_child_resource(
+        PlateCarrier("pc", size_x=10, size_y=10, size_z=10), location=Coordinate.zero()
+      )
+
+  def test_tube_rack_allows_resource_holder(self):
+    tube_rack = TubeRack("tube_rack", size_x=10, size_y=10, size_z=10, ordered_items={})
+    tube_rack.assign_child_resource(
+      ResourceHolder("holder", size_x=1, size_y=1, size_z=1), location=Coordinate.zero()
+    )
+    self.assertEqual(len(tube_rack.children), 1)

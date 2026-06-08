@@ -3,6 +3,7 @@ import unittest
 from pylabrobot.resources import (
   CellVis_24_wellplate_3600uL_Fb,
   Cor_Cos_6_wellplate_16800ul_Fb,
+  PlateCarrier,
   Revvity_384_wellplate_28ul_Ub,
   Thermo_TS_96_wellplate_1200ul_Rb,
 )
@@ -56,6 +57,15 @@ class TestLid(unittest.TestCase):
     plate = self.test_add_lid()
     plate.unassign_child_resource(plate.lid)
     self.assertIsNone(plate.lid)
+
+
+class TestPlateChildValidation(unittest.TestCase):
+  def test_plate_rejects_foreign_resource(self):
+    plate = Plate("plate", size_x=10, size_y=10, size_z=10, ordered_items={})
+    with self.assertRaises(TypeError):
+      plate.assign_child_resource(
+        PlateCarrier("pc", size_x=10, size_y=10, size_z=10), location=Coordinate.zero()
+      )
 
 
 class TestQuadrants(unittest.TestCase):

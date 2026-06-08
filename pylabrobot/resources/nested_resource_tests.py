@@ -98,6 +98,14 @@ class NestedTipRackIsNestedResourceTests(unittest.TestCase):
     self.assertEqual(bottom.serialize()["stacking_z_height"], 16.0)
     self.assertEqual(Resource.deserialize(bottom.serialize()), bottom)
 
+  def test_tiprack_rejects_foreign_resource(self):
+    from pylabrobot.resources.hamilton.plate_carriers import PLT_CAR_L5AC_A00
+    from pylabrobot.resources.hamilton.tip_racks import hamilton_96_tiprack_1000uL_filter
+
+    tip_rack = hamilton_96_tiprack_1000uL_filter("tr")
+    with self.assertRaises(TypeError):
+      tip_rack.assign_child_resource(PLT_CAR_L5AC_A00("pc"), location=Coordinate.zero())
+
 
 if __name__ == "__main__":
   unittest.main()

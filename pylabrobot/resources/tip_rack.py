@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABCMeta
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Sequence, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union, cast
 
 from pylabrobot.resources.tip import Tip, TipCreator
 from pylabrobot.resources.tip_tracker import (
@@ -148,6 +148,10 @@ class TipRack(ItemizedResource[TipSpot], metaclass=ABCMeta):
       f"{self.__class__.__name__}(name={self.name!r}, size_x={self._size_x}, "
       f"size_y={self._size_y}, size_z={self._size_z}, location={self.location})"
     )
+
+  def _allowed_child_types(self) -> Tuple[Type[Resource], ...]:
+    # Broadly allow TipRack so stacked NestedTipRacks (which are TipRacks) remain assignable.
+    return (TipSpot, TipRack)
 
   @staticmethod
   def _occupied_func(item: TipSpot):

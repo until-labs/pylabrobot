@@ -10,6 +10,7 @@ from typing import (
   Optional,
   Sequence,
   Tuple,
+  Type,
   TypeVar,
   Union,
   cast,
@@ -17,7 +18,7 @@ from typing import (
 
 import pylabrobot.utils
 
-from .resource import Resource
+from .resource import Coordinate, Resource
 
 if sys.version_info >= (3, 8):
   from typing import Literal
@@ -108,6 +109,32 @@ class ItemizedResource(Resource, Generic[T], metaclass=ABCMeta):
     for identifier in self._ordering:
       if identifier[0] not in LETTERS or not identifier[1:].isdigit():
         raise ValueError("Ordering must be in the transposed Excel style notation, e.g. 'A1'.")
+
+  def _allowed_child_types(self) -> Optional[Tuple[Type[Resource], ...]]:
+    """Resource types allowed as children of this resource.
+
+    Return ``None`` (the default) to allow any :class:`~.Resource`, preserving the permissive
+    behavior. Subclasses may override to restrict children to a fixed set of types; the check runs
+    in :meth:`assign_child_resource`. This is a method (not a class attribute) so subclasses whose
+    item type is not importable at class-definition time (e.g. ``Plate`` and ``Well``, which import
+    each other) can resolve it lazily with a function-local import.
+    """
+    return None
+
+  def assign_child_resource(
+    self,
+    resource: Resource,
+    location: Optional[Coordinate],
+    reassign: bool = True,
+  ):
+    allowed = self._allowed_child_types()
+    if allowed is not None and not isinstance(resource, allowed):
+      allowed_names = ", ".join(t.__name__ for t in allowed)
+      raise TypeError(
+        f"{self.__class__.__name__} can only store {allowed_names} resources, "
+        f"not {type(resource).__name__}."
+      )
+    return super().assign_child_resource(resource, location=location, reassign=reassign)
 
   def __getitem__(
     self,

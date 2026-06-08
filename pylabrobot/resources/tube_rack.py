@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union, cast
+from typing import Dict, Optional, Tuple, Type, Union, cast
 
 from .coordinate import Coordinate
 from .itemized_resource import ItemizedResource
@@ -37,6 +37,10 @@ class TubeRack(ItemizedResource[ResourceHolder]):
       ordered_items=ordered_items,
       model=model,
     )
+
+  def _allowed_child_types(self) -> Tuple[Type[Resource], ...]:
+    # Tubes are placed on the ResourceHolders (holder.resource = tube), not on the rack.
+    return (ResourceHolder,)
 
   def assign_child_resource(
     self,
