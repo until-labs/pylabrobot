@@ -2608,6 +2608,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     jet: bool = False,
     blow_out: bool = False,
     use_lld: bool = False,
+    auto_surface_following_distance: bool = False,
     pull_out_distance_transport_air: float = 10,
     hlc: Optional[HamiltonLiquidClass] = None,
     aspiration_type: int = 0,
@@ -2824,6 +2825,21 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     swap_speed = swap_speed or (hlc.aspiration_swap_speed if hlc is not None else 100)
     settling_time = settling_time or (hlc.aspiration_settling_time if hlc is not None else 0.5)
 
+    if auto_surface_following_distance:
+      follow_resource = (
+        aspiration.wells[0]
+        if isinstance(aspiration, MultiHeadAspirationPlate)
+        else aspiration.container
+      )
+      if not follow_resource.supports_compute_height_volume_functions():
+        raise ValueError(
+          "auto_surface_following_distance requires a container with height<->volume functions."
+        )
+      # The CoRe-96 cannot report its cLLD-detected liquid height to the host, so the
+      # follow distance is derived from volume + geometry (exact for constant-cross-
+      # section wells/troughs); cLLD still fixes the start position each op.
+      surface_following_distance = follow_resource.compute_height_from_volume(aspiration.volume)
+
     x_direction = 0 if position.x >= 0 else 1
     return await self.aspirate_core_96(
       x_position=abs(round(position.x * 10)),
@@ -2872,6 +2888,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     hlc: Optional[HamiltonLiquidClass] = None,
     pull_out_distance_transport_air=10,
     use_lld: bool = False,
+    auto_surface_following_distance: bool = False,
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     min_z_endpos: Optional[float] = None,
     lld_search_height: float = 199.9,
@@ -3101,6 +3118,20 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     flow_rate = dispense.flow_rate or (hlc.dispense_flow_rate if hlc is not None else 120)
     swap_speed = swap_speed or (hlc.dispense_swap_speed if hlc is not None else 100)
     settling_time = settling_time or (hlc.dispense_settling_time if hlc is not None else 5)
+
+    if auto_surface_following_distance:
+      follow_resource = (
+        dispense.wells[0]
+        if isinstance(dispense, MultiHeadDispensePlate)
+        else dispense.container
+      )
+      if not follow_resource.supports_compute_height_volume_functions():
+        raise ValueError(
+          "auto_surface_following_distance requires a container with height<->volume functions."
+        )
+      # CoRe-96 has no cLLD height readback; derive the follow (surface rise) from
+      # volume + geometry (exact for constant-cross-section wells/troughs).
+      surface_following_distance = follow_resource.compute_height_from_volume(dispense.volume)
 
     return await self.dispense_core_96(
       dispensing_mode=dispense_mode,

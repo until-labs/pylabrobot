@@ -647,6 +647,46 @@ class TestSTARLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
       ]
     )
 
+  async def test_core_96_aspirate_auto_surface_following(self):
+    # Cor_96 wells expose no height<->volume geometry; use a plate that does.
+    geom_plate = CellTreat_96_wellplate_350ul_Ub(name="geom_plate")
+    self.plt_car[2] = geom_plate
+    await self.lh.pick_up_tips96(self.tip_rack2)  # high volume tips
+    self.STAR._write_and_read_command.reset_mock()
+
+    volume = 100.0
+    await self.lh.aspirate96(
+      geom_plate, volume=volume, use_lld=True, auto_surface_following_distance=True
+    )
+
+    # follow distance is derived from volume + well geometry (no measured height)
+    expected_fh = round(geom_plate.get_well("A1").compute_height_from_volume(volume) * 10)
+    self.assertGreater(expected_fh, 0)
+    cmds = [c.kwargs["cmd"] for c in self.STAR._write_and_read_command.call_args_list]
+    ea = next(c for c in cmds if c.startswith("C0EA"))
+    self.assertIn(f"fh{expected_fh:03}", ea)
+    self.assertIn("cm1", ea)  # gamma cLLD on
+
+  async def test_core_96_dispense_auto_surface_following(self):
+    geom_plate = CellTreat_96_wellplate_350ul_Ub(name="geom_plate")
+    self.plt_car[2] = geom_plate
+    await self.lh.pick_up_tips96(self.tip_rack2)
+    await self.lh.aspirate96(geom_plate, volume=100.0)  # fill tips first
+    self.STAR._write_and_read_command.reset_mock()
+
+    volume = 100.0
+    with no_volume_tracking():
+      await self.lh.dispense96(
+        geom_plate, volume=volume, use_lld=True, auto_surface_following_distance=True
+      )
+
+    expected_fh = round(geom_plate.get_well("A1").compute_height_from_volume(volume) * 10)
+    self.assertGreater(expected_fh, 0)
+    cmds = [c.kwargs["cmd"] for c in self.STAR._write_and_read_command.call_args_list]
+    ed = next(c for c in cmds if c.startswith("C0ED"))
+    self.assertIn(f"fh{expected_fh:03}", ed)
+    self.assertIn("cm1", ed)  # gamma cLLD on
+
   async def test_zero_volume_liquid_handling96(self):
     # just test that this does not throw an error
     await self.lh.pick_up_tips96(self.tip_rack)
