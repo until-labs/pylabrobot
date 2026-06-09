@@ -1,8 +1,8 @@
 """ML Star tip carriers"""
 
 from pylabrobot.resources.carrier import (
-  ResourceHolder,
   TipCarrier,
+  TipRackHolder,
   create_homogeneous_resources,
 )
 from pylabrobot.resources.compact import compact_factory
@@ -17,7 +17,7 @@ def TIP_CAR_120BC_4mlTF_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.2, 10.0, 114.95),
         Coordinate(6.2, 106.0, 114.95),
@@ -41,7 +41,7 @@ def TIP_CAR_120BC_5mlT_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.2, 10.0, 114.95),
         Coordinate(6.2, 106.0, 114.95),
@@ -65,7 +65,7 @@ def TIP_CAR_288_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(26.3, 36.3, 114.9),
         Coordinate(26.3, 182.213, 114.9),
@@ -87,7 +87,7 @@ def TIP_CAR_288_B00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(17.1, 36.25, 115.15),
         Coordinate(17.1, 182.25, 115.15),
@@ -109,7 +109,7 @@ def TIP_CAR_288_C00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(3.7, 36.3, 114.7),
         Coordinate(3.7, 182.3, 114.7),
@@ -131,7 +131,7 @@ def TIP_CAR_384BC_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.3, 78.2, 114.8),
         Coordinate(6.3, 163.1, 114.8),
@@ -154,7 +154,7 @@ def TIP_CAR_384_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.3, 78.2, 114.8),
         Coordinate(6.3, 163.1, 114.8),
@@ -177,7 +177,7 @@ def TIP_CAR_480(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.2, 10.0, 114.95),
         Coordinate(6.2, 106.0, 114.95),
@@ -201,7 +201,7 @@ def TIP_CAR_480BC_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.2, 10.0, 114.95),
         Coordinate(6.2, 106.0, 114.95),
@@ -226,7 +226,7 @@ def TIP_CAR_480_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.2, 10.0, 114.95),
         Coordinate(6.2, 106.0, 114.95),
@@ -250,7 +250,7 @@ def TIP_CAR_72_4mlTF_C00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(3.7, 36.3, 114.7),
         Coordinate(3.7, 182.3, 114.7),
@@ -272,7 +272,7 @@ def TIP_CAR_72_5mlT_C00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(3.7, 36.3, 114.7),
         Coordinate(3.7, 182.3, 114.7),
@@ -294,7 +294,7 @@ def TIP_CAR_96BC_4mlTF_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.3, 78.2, 114.8),
         Coordinate(6.3, 163.1, 114.8),
@@ -317,7 +317,7 @@ def TIP_CAR_96BC_5mlT_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.3, 78.2, 114.8),
         Coordinate(6.3, 163.1, 114.8),
@@ -341,7 +341,7 @@ def TIP_CAR_NTR_A00(name: str) -> TipCarrier:
     size_y=497.0,
     size_z=130.0,
     sites=create_homogeneous_resources(
-      klass=ResourceHolder,
+      klass=TipRackHolder,
       locations=[
         Coordinate(6.2, 10.0, 29.0),
         Coordinate(6.2, 106.0, 29.0),

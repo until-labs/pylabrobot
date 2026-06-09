@@ -11,6 +11,7 @@ from .carrier import (
   PlateCarrier,
   PlateHolder,
   TipCarrier,
+  TipRackHolder,
   create_homogeneous_resources,
   create_resources,
 )

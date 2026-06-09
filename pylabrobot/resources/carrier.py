@@ -10,6 +10,7 @@ from .plate import Lid, Plate
 from .plate_adapter import PlateAdapter
 from .resource import Resource
 from .resource_stack import ResourceStack
+from .tip_rack import TipRack
 
 logger = logging.getLogger("pylabrobot")
 
@@ -133,7 +134,7 @@ class TipCarrier(Carrier):
     size_x: float,
     size_y: float,
     size_z: float,
-    sites: Optional[Dict[int, ResourceHolder]] = None,
+    sites: Optional[Dict[int, TipRackHolder]] = None,
     category="tip_carrier",
     model: Optional[str] = None,
   ):
@@ -146,6 +147,7 @@ class TipCarrier(Carrier):
       category=category,
       model=model,
     )
+    self.sites: Dict[int, TipRackHolder] = sites or {}  # fix type
 
 
 class PlateHolder(ResourceHolder):
@@ -253,6 +255,36 @@ class PlateHolder(ResourceHolder):
       **super().serialize(),
       "pedestal_size_z": self.pedestal_size_z,
     }
+
+
+class TipRackHolder(ResourceHolder):
+  """A single site within a tip carrier — accepts tip racks only.
+
+  Mirror of :class:`PlateHolder`: a tip-carrier site that rejects anything which is not a
+  ``TipRack`` (or a z-direction ``ResourceStack`` of them, e.g. stacked nested tip racks),
+  so a plate can no longer be assigned to a tip carrier.
+  """
+
+  def assign_child_resource(
+    self,
+    resource: Resource,
+    location: Optional[Coordinate] = None,
+    reassign: bool = True,
+  ):
+    if isinstance(resource, ResourceStack):
+      if not resource.direction == "z":
+        raise ValueError("ResourceStack assigned to TipRackHolder must have direction 'z'")
+      if not all(isinstance(c, TipRack) for c in resource.children):
+        raise TypeError(
+          "If a ResourceStack is assigned to a TipRackHolder, the items "
+          + f"must be TipRacks, not {type(resource.children[-1])}"
+        )
+    elif not isinstance(resource, TipRack):
+      raise TypeError(
+        "TipRackHolder can only store TipRack or a z-direction ResourceStack of "
+        + f"TipRacks, not {type(resource)}"
+      )
+    return super().assign_child_resource(resource, location, reassign)
 
 
 class PlateCarrier(Carrier):
