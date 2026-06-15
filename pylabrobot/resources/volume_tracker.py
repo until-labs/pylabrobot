@@ -112,7 +112,17 @@ class VolumeTracker:
   def set_liquids(self, liquids: List[Tuple[Optional["Liquid"], float]]) -> None:
     """Set the liquids in the container."""
     self.liquids = liquids
-    self.pending_liquids = liquids
+    # HOTFIX: pending_liquids MUST be an independent copy, not an alias of
+    # `liquids`. `remove_liquid`/`add_liquid` mutate `pending_liquids` in place
+    # (pop/append); aliasing makes those edits also mutate the committed
+    # `liquids`, so `rollback()` (pending = deepcopy(liquids)) restores from
+    # already-corrupted committed state and a faulted aspirate/dispense is never
+    # undone — e.g. a 96-head aspirate from an initial-filled reservoir leaves a
+    # phantom 96*volume decrement, and retrying it eventually raises
+    # TooLittleLiquidError though the liquid is physically present.
+    # Fixed upstream (v0.2.x) by the scalar volume/pending_volume refactor, where
+    # remove_liquid only touches pending_volume so rollback is naturally correct.
+    self.pending_liquids = copy.deepcopy(liquids)
 
     if not self.is_cross_contamination_tracking_disabled:
       self.liquid_history.update([liquid[0] for liquid in liquids])

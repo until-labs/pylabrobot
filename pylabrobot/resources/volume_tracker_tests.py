@@ -64,3 +64,23 @@ class TestVolumeTracker(unittest.TestCase):
 
     with self.assertRaises(TooLittleLiquidError):
       tracker.get_liquids(top_volume=600)
+
+  def test_set_liquids_does_not_alias_pending_into_committed(self):
+    """Regression: set_liquids must not alias pending_liquids to the committed
+    `liquids` list. If it does, remove_liquid (which pops/appends pending in
+    place) also mutates committed, so rollback restores from corrupted state and
+    a faulted aspirate is never undone."""
+    tracker = VolumeTracker(thing="reservoir", max_volume=300)
+    tracker.set_liquids([(None, 200)])
+    self.assertIsNot(tracker.liquids, tracker.pending_liquids)
+
+    # Pending-only removals (as a faulted aspirate leaves before rollback)...
+    tracker.remove_liquid(volume=50)
+    tracker.remove_liquid(volume=50)
+    self.assertEqual(tracker.get_used_volume(), 100)
+    # ...must NOT have touched the committed volume.
+    self.assertEqual(sum(v for _, v in tracker.liquids), 200)
+
+    # rollback (the aspirate96 except-block path) fully restores pending.
+    tracker.rollback()
+    self.assertEqual(tracker.get_used_volume(), 200)
