@@ -628,6 +628,36 @@ class TestSTARLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
       ]
     )
 
+  async def test_core_96_negative_immersion_depth(self):
+    # Regression: a negative immersion ("above the surface") must reach the firmware
+    # as a POSITIVE magnitude + direction flag (ix1), not a negative magnitude that
+    # trips the firmware's `0 <= immersion_depth <= 3600` assert. The 96-head path
+    # used to omit the abs() the 8-channel path applies.
+    await self.lh.pick_up_tips96(self.tip_rack2)
+    assert self.plate.lid is not None
+    self.plate.lid.unassign()
+
+    self.STAR._write_and_read_command.reset_mock()
+    await self.lh.aspirate96(self.plate, volume=100, immersion_depth=-0.3)
+    ea = next(
+      c.kwargs["cmd"]
+      for c in self.STAR._write_and_read_command.call_args_list
+      if c.kwargs["cmd"].startswith("C0EA")
+    )
+    self.assertIn("iw003", ea)  # |-0.3 mm| = 0.3 mm = 3 [0.1mm]
+    self.assertIn("ix1", ea)  # direction: up / out of the liquid
+
+    self.STAR._write_and_read_command.reset_mock()
+    with no_volume_tracking():
+      await self.lh.dispense96(self.plate, volume=100, immersion_depth=-0.3)
+    ed = next(
+      c.kwargs["cmd"]
+      for c in self.STAR._write_and_read_command.call_args_list
+      if c.kwargs["cmd"].startswith("C0ED")
+    )
+    self.assertIn("iw003", ed)
+    self.assertIn("ix1", ed)
+
   async def test_core_96_dispense(self):
     await self.lh.pick_up_tips96(self.tip_rack2)  # pick up high volume tips
     if self.plate.lid is not None:

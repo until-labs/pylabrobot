@@ -128,6 +128,12 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = Fals
       bottom_type=WellBottomType.V,
       material_z_thickness=0.6,
       cross_section_type=CrossSectionType.CIRCLE,
+      # Same V-bottom well geometry as the non-skirted Eppendorf_96_wellplate_250ul_Vb
+      # (5.48mm dia, 19.5mm deep), so reuse its calibrated volume<->height curve. Required
+      # for auto-surface-following on aspirate96/dispense96 (PLR otherwise raises "requires
+      # a container with height<->volume functions"); max_volume auto-derives from the curve.
+      compute_volume_from_height=(_compute_volume_from_height_Eppendorf_96_wellplate_250ul_Vb),
+      compute_height_from_volume=(_compute_height_from_volume_Eppendorf_96_wellplate_250ul_Vb),
     )
   )
 

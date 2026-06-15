@@ -2856,7 +2856,11 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       maximum_immersion_depth=round((minimum_height or position.z) * 10),
       second_section_height=round(second_section_height * 10),
       second_section_ratio=round(second_section_ratio * 10),
-      immersion_depth=round(immersion_depth * 10),
+      # CoRe96 firmware takes a positive immersion magnitude plus a separate
+      # direction flag (like the 8-channel path); a signed immersion_depth would
+      # trip the firmware's `0 <= immersion_depth <= 3600` assert. Negative means
+      # "above the surface" and is carried by immersion_depth_direction below.
+      immersion_depth=round(abs(immersion_depth) * 10),
       immersion_depth_direction=immersion_depth_direction or (0 if (immersion_depth >= 0) else 1),
       surface_following_distance=round(surface_following_distance * 10),
       aspiration_volumes=round(volume * 10),
@@ -3148,7 +3152,11 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       minimum_height=round((minimum_height or position.z) * 10),
       second_section_height=round(second_section_height * 10),
       second_section_ratio=round(second_section_ratio * 10),
-      immersion_depth=round(immersion_depth * 10),
+      # CoRe96 firmware takes a positive immersion magnitude plus a separate
+      # direction flag (like the 8-channel path); a signed immersion_depth would
+      # trip the firmware's `0 <= immersion_depth <= 3600` assert. Negative means
+      # "above the surface" and is carried by immersion_depth_direction below.
+      immersion_depth=round(abs(immersion_depth) * 10),
       immersion_depth_direction=immersion_depth_direction or (0 if (immersion_depth >= 0) else 1),
       surface_following_distance=round(surface_following_distance * 10),
       dispense_volume=round(volume * 10),
