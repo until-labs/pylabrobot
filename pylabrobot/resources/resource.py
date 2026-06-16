@@ -435,16 +435,34 @@ class Resource:
     return False
 
   def _check_naming_conflicts(self, resource: Resource):
-    """Recursively check for naming conflicts in the resource tree."""
-    if resource.name == self.name:
-      raise ValueError(f"Resource with name '{resource.name}' already exists in the tree.")
+    """Raise if an incoming subtree shares a name with the existing tree.
 
-    # check if the name of the resource we are currently checking already exists in this subtree
-    for child in self.children:
-      child._check_naming_conflicts(resource)
-    # check if the name of any of the children of the resource already exists in this subtree
-    for child in resource.children:
-      self._check_naming_conflicts(child)
+    :meth:`assign_child_resource` calls this on ``get_root()``, so ``self`` is the
+    tree root and its subtree is the whole existing tree. The names already in the
+    tree are gathered once into a set, then the incoming ``resource`` subtree is
+    scanned against it — O(|existing| + |incoming|).
+
+    The previous formulation recursed both subtrees against each other, re-walking
+    the incoming subtree at every existing node. That is Delannoy-exponential in
+    nesting depth (and quadratic as the tree grows), so deserializing a deck of
+    deeply-stacked nested resources (e.g. nested tip racks) took minutes. The set
+    of (existing, incoming) name pairs the old code compared is exactly the
+    Cartesian product of the two subtrees, so it raised iff the subtrees shared a
+    name — the same condition checked here.
+    """
+    existing = set()
+    stack = [self]
+    while stack:
+      node = stack.pop()
+      existing.add(node.name)
+      stack.extend(node.children)
+
+    to_check = [resource]
+    while to_check:
+      node = to_check.pop()
+      if node.name in existing:
+        raise ValueError(f"Resource with name '{node.name}' already exists in the tree.")
+      to_check.extend(node.children)
 
   def unassign_child_resource(self, resource: Resource):
     """Unassign a child resource from this resource.
