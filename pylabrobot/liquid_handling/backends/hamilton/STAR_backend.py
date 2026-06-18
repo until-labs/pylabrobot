@@ -2579,9 +2579,6 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       tip_rack = tip_spot_a1.parent
       assert tip_rack is not None
       position.z = tip_rack.get_location_wrt(self.deck).z + 1.45
-      # This should be the case for all normal hamilton tip carriers + racks
-      # In the future, we might want to make this more flexible
-      assert abs(position.z - 216.4) < 1e-6, f"z position must be 216.4, got {position.z}"
     else:
       position = self._position_96_head_in_resource(drop.resource) + drop.offset
 
