@@ -142,6 +142,7 @@ def serialize_compact(resource: "Resource") -> Dict[str, Any]:
   # Local imports to avoid circulars with resource.py loading order.
   from .carrier import Carrier, MFXCarrier, ResourceHolder
   from .deck import Deck
+  from .tip_rack import TipRack, TipSpot
 
   blob: Dict[str, Any] = {
     COMPACT_VERSION_KEY: True,
@@ -225,6 +226,35 @@ def serialize_compact(resource: "Resource") -> Dict[str, Any]:
   # A ResourceHolder is excluded: its single held resource is already recorded by
   # the owning carrier / MFXCarrier via ``assignments`` (e.g. a plate on an MFX
   # module's holder), so recording it here too would double-assign it on rebuild.
+  #
+  # A TipRack's per-instance tip state is the one piece the factory does not
+  # reconstruct from ``name`` alone: the factory defaults to ``with_tips=True``
+  # (a full rack), so an empty rack built ``with_tips=False`` must record that
+  # override or it round-trips back to full. ``with_tips`` is inferred from the
+  # observable tip presence — exact for the only two states the factory knob can
+  # produce (all-full / all-empty) — and replayed into the factory on deserialize,
+  # mirroring how ``modules`` is recorded and replayed for a generic MFXCarrier.
+  if isinstance(resource, TipRack):
+    # Read the TipSpot children directly rather than ``get_all_items()``: a rack
+    # with a stacked child (an NTR on an NTR) counts that child in ``num_items``,
+    # so ``get_all_items()`` would include the non-spot stacked rack.
+    have = [c.has_tip() for c in resource.children if isinstance(c, TipSpot)]
+    if have and not any(have):
+      # All spots empty: factory default is with_tips=True, so record the override.
+      blob["with_tips"] = False
+    elif have and not all(have):
+      # Non-uniform tip presence is runtime consumption state, out of scope for the
+      # compact format (see module docstring). Fail visibly rather than emit a blob
+      # that silently won't round-trip.
+      raise ValueError(
+        f"TipRack {resource.name!r} has non-uniform tip presence "
+        f"({sum(have)}/{len(have)} spots filled), which is runtime consumption state, "
+        f"not class-default identity. The compact format records only all-full "
+        f"(default) or all-empty (with_tips=False) racks; use serialize_all_state for "
+        f"per-spot runtime state."
+      )
+    # All spots full → omit; factory default with_tips=True round-trips.
+
   stacked = []
   if not isinstance(resource, ResourceHolder):
     for child in resource.children:
@@ -274,17 +304,20 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
     )
   name = blob["name"]
 
-  # A generic MFXCarrier records its modules (caller-chosen); rebuild them and
-  # pass them to the factory. A fixed-assembly MFX factory has no ``modules``
-  # block and bakes its own, so it's constructed with just ``name``.
+  # Replay the caller-chosen construction arguments the blob recorded. A generic
+  # MFXCarrier records its ``modules`` (rebuilt here); an empty TipRack records
+  # ``with_tips=False``. ``_invoke_factory`` filters by signature, so each kwarg
+  # reaches only the factories that declare it (a fixed-assembly MFX factory bakes
+  # its own modules and is built with just ``name``).
+  factory_kwargs: Dict[str, Any] = {"name": name}
   if "modules" in blob:
-    modules = {
+    factory_kwargs["modules"] = {
       int(slot): deserialize_compact(mod_blob)
       for slot, mod_blob in blob["modules"].items()
     }
-    resource = _invoke_factory(factory, name=name, modules=modules)
-  else:
-    resource = _invoke_factory(factory, name=name)
+  if "with_tips" in blob:
+    factory_kwargs["with_tips"] = blob["with_tips"]
+  resource = _invoke_factory(factory, **factory_kwargs)
 
   if isinstance(resource, Deck):
     for child_blob in blob.get("children", []):

@@ -28,6 +28,7 @@ from pylabrobot.resources.hamilton.tip_racks import (
 )
 from pylabrobot.resources.nest.plates import nest_12_troughplate_15000uL_Vb
 from pylabrobot.resources.resource import Resource
+from pylabrobot.resources.tip_rack import TipSpot
 from pylabrobot.resources.thermo_fisher.plates import Thermo_Nunc_96_wellplate_400uL_Fb
 
 
@@ -293,6 +294,76 @@ class TestStackedResourceRoundTrip(unittest.TestCase):
     restored = Resource.deserialize_compact(blob)
     self.assertEqual(bottom, restored)
     self.assertIs(restored.get_stack_top(), restored.get_resource("ntr_top"))
+
+
+def _spot_states(rack) -> list:
+  """has_tip() for each TipSpot child of ``rack``. Filters to TipSpots because a
+  rack with a stacked child counts that child in num_items, so get_all_items()
+  would include the non-spot stacked rack."""
+  return [c.has_tip() for c in rack.children if isinstance(c, TipSpot)]
+
+
+class TestTipRackTipStateRoundTrip(unittest.TestCase):
+  """A tip rack's ``with_tips`` state round-trips: an empty rack records
+  ``with_tips=False`` and comes back empty, a full rack omits the key and comes
+  back full. ``Resource.__eq__`` ignores tip-tracker state, so every assertion
+  checks ``has_tip()`` explicitly rather than relying on ``==``."""
+
+  def test_empty_tip_rack_round_trips_standalone(self):
+    rack = hamilton_96_tiprack_1000uL_filter(name="empty_rack", with_tips=False)
+    blob = rack.serialize_compact()
+    self.assertIs(blob["with_tips"], False)
+    restored = Resource.deserialize_compact(blob)
+    self.assertTrue(not any(_spot_states(restored)))
+
+  def test_full_tip_rack_omits_with_tips_and_round_trips(self):
+    rack = hamilton_96_tiprack_1000uL_filter(name="full_rack")  # default with_tips=True
+    blob = rack.serialize_compact()
+    self.assertNotIn("with_tips", blob)
+    restored = Resource.deserialize_compact(blob)
+    self.assertTrue(all(_spot_states(restored)))
+
+  def test_empty_tip_rack_on_carrier_round_trips(self):
+    carrier = TIP_CAR_480_A00(name="tips_car")
+    carrier[0] = hamilton_96_tiprack_1000uL_filter(name="empty_on_carrier", with_tips=False)
+    blob = carrier.serialize_compact()
+    self.assertIs(blob["assignments"]["0"]["with_tips"], False)
+    restored = Resource.deserialize_compact(blob)
+    rack = restored.get_resource("empty_on_carrier")
+    self.assertTrue(not any(_spot_states(rack)))
+
+  def test_empty_tip_rack_on_full_deck_round_trips(self):
+    deck = STARDeck()
+    carrier = TIP_CAR_480_A00(name="tips_carrier")
+    carrier[0] = hamilton_96_tiprack_1000uL_filter(name="empty_deck_rack", with_tips=False)
+    deck.assign_child_resource(carrier, rails=1)
+    blob = deck.serialize_compact()
+    restored = Resource.deserialize_compact(blob)
+    rack = restored.get_resource("empty_deck_rack")
+    self.assertTrue(not any(_spot_states(rack)))
+
+  def test_nested_stack_full_bottom_empty_top_round_trips(self):
+    """Each rack in a stack records its own ``with_tips`` independently: a full
+    bottom omits the key, an empty top stacked on it records ``with_tips=False``."""
+    bottom = hamilton_96_tiprack_50uL_NTR(name="ntr_bottom")  # full (default)
+    top = hamilton_96_tiprack_50uL_NTR(name="ntr_top", with_tips=False)  # empty
+    bottom.assign_child_resource(top)  # NestedTipRack auto-stacks
+    blob = bottom.serialize_compact()
+    self.assertNotIn("with_tips", blob)
+    self.assertIs(blob["stacked"][0]["with_tips"], False)
+    restored = Resource.deserialize_compact(blob)
+    self.assertTrue(all(_spot_states(restored)))
+    restored_top = restored.get_resource("ntr_top")
+    self.assertTrue(not any(_spot_states(restored_top)))
+
+  def test_partial_tip_rack_raises(self):
+    """Non-uniform tip presence is runtime consumption state, out of scope for the
+    compact format — serialize must refuse loudly, pointing to serialize_all_state."""
+    rack = hamilton_96_tiprack_1000uL_filter(name="partial_rack")  # full
+    rack.set_tip_state([False] + [True] * (rack.num_items - 1))  # empty one spot
+    with self.assertRaises(ValueError) as cm:
+      rack.serialize_compact()
+    self.assertIn("serialize_all_state", str(cm.exception))
 
 
 class TestErrorHandling(unittest.TestCase):
