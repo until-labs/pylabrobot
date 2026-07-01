@@ -3224,6 +3224,8 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     z_speed: float = 50.0,
     y_gripping_speed: float = 5.0,
     front_channel: int = 7,
+    fast_z_speed: Optional[float] = None,
+    fast_approach_distance: float = 20.0,
   ):
     """Pick up resource with CoRe gripper tool
     Low level component of :meth:`move_resource`
@@ -3236,9 +3238,16 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         command [mm] (refers to all channels independent of tip pattern parameter 'tm'). Must be
         between 0 and 360.
       grip_strength: Grip strength (0 = weak, 99 = strong). Must be between 0 and 99. Default 15.
-      z_speed: Z speed [mm/s]. Must be between 0.4 and 128.7. Default 50.0.
+      z_speed: Z speed [mm/s] for the final (gentle) approach onto the resource. Must be between
+        0.4 and 128.7. Default 50.0.
       y_gripping_speed: Y gripping speed [mm/s]. Must be between 0 and 370.0. Default 5.0.
       front_channel: Channel 1. Must be between 1 and self._num_channels - 1. Default 7.
+      fast_z_speed: If set, do a two-phase descent — cross to the source and descend fast at this
+        speed [mm/s] to ``fast_approach_distance`` above the grip point, then the slow ``z_speed``
+        for the final approach. ``None`` (default) keeps the single slow descent.
+      fast_approach_distance: Height [mm] above the grip point at which the fast descent hands off
+        to the slow one. Must clear the resource top plus any stack play (the fast phase stops in
+        the air above the resource, so the open paddles clear it regardless of width). Default 20.0.
     """
 
     # Get center of source plate. Also gripping height and plate width.
@@ -3248,6 +3257,28 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
 
     if self.core_parked:
       await self.pick_up_core_gripper_tools(front_channel=front_channel)
+
+    traversal_height = (
+      minimum_traverse_height_at_beginning_of_a_command or self._iswap_traversal_height
+    )
+    # Optional two-phase descent: cross to the source fast, descending only to
+    # `fast_approach_distance` ABOVE the grip point — still in the air above the resource,
+    # where the open paddles clear it regardless of width — then let core_get_plate do just
+    # that final approach at the slow, gentle `z_speed`. Cuts the long slow "air" descent
+    # from the traversal height. The caller must set `fast_approach_distance` large enough to
+    # clear the resource top plus any stack play. Opt-in: without `fast_z_speed` the single
+    # slow descent from the traversal height is unchanged.
+    grip_command_start_height = traversal_height
+    if fast_z_speed is not None:
+      await self.core_move_plate_to_position(
+        x_position=round(center.x * 10),
+        x_direction=0,
+        y_position=round(center.y * 10),
+        z_position=round((grip_height + fast_approach_distance) * 10),
+        z_speed=round(fast_z_speed * 10),
+        minimum_traverse_height_at_beginning_of_a_command=round(traversal_height * 10),
+      )
+      grip_command_start_height = grip_height + fast_approach_distance
 
     await self.core_get_plate(
       x_position=round(center.x * 10),
@@ -3259,9 +3290,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       open_gripper_position=round(grip_width * 10) + 30,
       plate_width=round(grip_width * 10) - 30,
       grip_strength=grip_strength,
-      minimum_traverse_height_at_beginning_of_a_command=round(
-        (minimum_traverse_height_at_beginning_of_a_command or self._iswap_traversal_height) * 10
-      ),
+      minimum_traverse_height_at_beginning_of_a_command=round(grip_command_start_height * 10),
       minimum_z_position_at_the_command_end=round(
         (minimum_z_position_at_the_command_end or self._iswap_traversal_height) * 10
       ),
@@ -3308,6 +3337,8 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
     z_press_on_distance: float = 0.0,
+    fast_z_speed: Optional[float] = None,
+    fast_approach_distance: float = 20.0,
     return_tool: bool = True,
   ):
     """Place resource with CoRe gripper tool
@@ -3334,6 +3365,24 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     grip_height = location.z + resource.get_absolute_size_z() - pickup_distance_from_top
     grip_width = resource.get_absolute_size_y()
 
+    traversal_height = (
+      minimum_traverse_height_at_beginning_of_a_command or self._iswap_traversal_height
+    )
+    # Optional two-phase descent (mirrors core_pick_up_resource): carry the held resource
+    # across and down fast to `fast_approach_distance` above the place point, then place at
+    # the slow core_put_plate speed. Opt-in via `fast_z_speed`.
+    put_command_start_height = traversal_height
+    if fast_z_speed is not None:
+      await self.core_move_plate_to_position(
+        x_position=round(location.x * 10),
+        x_direction=0,
+        y_position=round(location.y * 10),
+        z_position=round((grip_height + fast_approach_distance) * 10),
+        z_speed=round(fast_z_speed * 10),
+        minimum_traverse_height_at_beginning_of_a_command=round(traversal_height * 10),
+      )
+      put_command_start_height = grip_height + fast_approach_distance
+
     await self.core_put_plate(
       x_position=round(location.x * 10),
       x_direction=0,
@@ -3342,9 +3391,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
       z_press_on_distance=round(z_press_on_distance * 10),
       z_speed=500,
       open_gripper_position=round(grip_width * 10) + 30,
-      minimum_traverse_height_at_beginning_of_a_command=round(
-        (minimum_traverse_height_at_beginning_of_a_command or self._iswap_traversal_height) * 10
-      ),
+      minimum_traverse_height_at_beginning_of_a_command=round(put_command_start_height * 10),
       z_position_at_the_command_end=round(
         (z_position_at_the_command_end or self._iswap_traversal_height) * 10
       ),
@@ -3358,6 +3405,8 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     core_front_channel: int = 7,
     iswap_grip_strength: int = 4,
     core_grip_strength: int = 15,
+    core_fast_z_speed: Optional[float] = None,
+    core_fast_approach_distance: float = 20.0,
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
     plate_width_tolerance: float = 2.0,
@@ -3482,6 +3531,8 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         minimum_z_position_at_the_command_end=self._iswap_traversal_height,
         front_channel=core_front_channel,
         grip_strength=core_grip_strength,
+        fast_z_speed=core_fast_z_speed,
+        fast_approach_distance=core_fast_approach_distance,
       )
     else:
       raise ValueError(f"use_arm must be either 'iswap' or 'core', not {use_arm}")
@@ -3520,6 +3571,8 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     minimum_traverse_height_at_beginning_of_a_command: Optional[float] = None,
     z_position_at_the_command_end: Optional[float] = None,
     z_press_on_distance: float = 0.0,
+    core_fast_z_speed: Optional[float] = None,
+    core_fast_approach_distance: float = 20.0,
     open_gripper_position: Optional[float] = None,
     hotel_depth=160.0,
     hotel_clearance_height=7.5,
@@ -3635,6 +3688,8 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
         minimum_traverse_height_at_beginning_of_a_command=self._iswap_traversal_height,
         z_position_at_the_command_end=self._iswap_traversal_height,
         z_press_on_distance=z_press_on_distance,
+        fast_z_speed=core_fast_z_speed,
+        fast_approach_distance=core_fast_approach_distance,
         # int(previous_location.z + move.resource.get_size_z() / 2) * 10,
         return_tool=return_core_gripper,
       )

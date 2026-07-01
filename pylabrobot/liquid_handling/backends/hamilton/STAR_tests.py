@@ -29,6 +29,8 @@ from pylabrobot.resources import (
 )
 from pylabrobot.resources.hamilton import STARLetDeck, hamilton_96_tiprack_300uL_filter
 
+from pylabrobot.resources.errors import NoTipError
+
 from .STAR_backend import (
   CommandSyntaxError,
   HamiltonNoTipError,
@@ -36,6 +38,7 @@ from .STAR_backend import (
   STARBackend,
   STARFirmwareError,
   UnknownHamiltonError,
+  convert_star_firmware_error_to_plr_error,
   parse_star_fw_string,
 )
 
@@ -118,6 +121,19 @@ class TestSTARResponseParsing(unittest.TestCase):
       e.errors["Pipetting channel 16"].message,
       "Tip already picked up",
     )
+
+  def test_convert_96_head_tip_error(self):
+    # The 96 head ("CoRe 96 Head" / module H0) reports tip errors (here code 08 / trace 75 = "No
+    # tip picked up"). These should convert to a native NoTipError, just like the 8 channels do,
+    # instead of surfacing a raw STARFirmwareError.
+    with self.assertRaises(STARFirmwareError) as ctx:
+      self.star.check_fw_string_error("C0EPid1111 er99/00 H008/75")
+    fw_error = ctx.exception
+    self.assertEqual(set(fw_error.errors), {"CoRe 96 Head"})
+    self.assertIsInstance(fw_error.errors["CoRe 96 Head"], HamiltonNoTipError)
+
+    plr_error = convert_star_firmware_error_to_plr_error(fw_error)
+    self.assertIsInstance(plr_error, NoTipError)
 
   def test_parse_slave_response_errors(self):
     with self.assertRaises(STARFirmwareError) as ctx:
@@ -1038,6 +1054,40 @@ class TestSTARLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
         ),
       ]
     )
+
+  async def test_move_core_two_phase_fast_approach(self):
+    self.plt_car[1].resource.unassign()
+    await self.lh.move_plate(
+      self.plate,
+      self.plt_car[1],
+      pickup_distance_from_top=13 - 3.33,
+      use_arm="core",
+      core_front_channel=7,
+      return_core_gripper=True,
+      core_fast_z_speed=150.0,
+      core_fast_approach_distance=20.0,
+    )
+    cmds = [
+      c.kwargs["cmd"] for c in self.STAR._write_and_read_command.call_args_list if "cmd" in c.kwargs
+    ]
+    zm = [c for c in cmds if c.startswith("C0ZM")]
+    zp = [c for c in cmds if c.startswith("C0ZP")]
+    zr = [c for c in cmds if c.startswith("C0ZR")]
+    # One fast ZM approach precedes each of the slow grip (ZP) and slow place (ZR).
+    self.assertEqual(len(zm), 2)
+    self.assertEqual(len(zp), 1)
+    self.assertEqual(len(zr), 1)
+    # Fast approach descends to grip+approach (187.6+20=207.6 mm -> zj2076) at 150 mm/s (zy1500).
+    self.assertIn("zj2076", zm[0])
+    self.assertIn("zy1500", zm[0])
+    # The grip is unchanged (zj1876) but starts its slow (zy0500) descent from grip+approach
+    # (th2076) instead of the full traversal height (th2800 in test_move_core).
+    self.assertIn("zj1876", zp[0])
+    self.assertIn("zy0500", zp[0])
+    self.assertIn("th2076", zp[0])
+    # The place likewise runs its slow final descent from grip+approach.
+    self.assertIn("th2076", zr[0])
+    self.assertIn("zy0500", zr[0])
 
   async def test_core_release_z_press_on_distance_upper_bound(self):
     await self.STAR.core_release_picked_up_resource(
