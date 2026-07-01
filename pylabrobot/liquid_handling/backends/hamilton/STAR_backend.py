@@ -1110,6 +1110,12 @@ def convert_star_firmware_error_to_plr_error(
     }
     return ChannelizedError(errors=errors, raw_response=error.raw_response)
 
+  # The 96 head is a single module ("CoRe 96 Head"), so it can't be expressed as a per-channel
+  # ChannelizedError. Convert its tip errors (e.g. NoTipError / HasTipError) the same way as the
+  # 8 channels, instead of surfacing a raw STARFirmwareError.
+  if set(error.errors) == {"CoRe 96 Head"}:
+    return convert_star_module_error_to_plr_error(error.errors["CoRe 96 Head"])
+
   return None
 
 
