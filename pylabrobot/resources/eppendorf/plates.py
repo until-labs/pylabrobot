@@ -15,9 +15,17 @@ def _compute_volume_from_height_Eppendorf_96_wellplate_250ul_Vb(
 ):
   if h > 20.3:
     raise ValueError(f"Height {h} is too large for" + "Eppendorf_96_wellplate_250ul_Vb")
-  return max(
-    0.89486648 + 2.92455131 * h + 2.03472797 * h**2 + -0.16509371 * h**3 + 0.00675759 * h**4,
-    0,
+  # The volume<->height fit only spans the measured range (0-260 uL / 0-14.349 mm; see
+  # results_measurement_fitting_dict below). Above that the quartic extrapolates
+  # unphysically (~584 uL at the 19.5 mm well depth) — this is a 250 uL plate and cannot
+  # hold 584 uL. Cap at the real capacity so it agrees with _compute_height_from_volume's
+  # 262.5 uL limit and the auto-derived max_volume stays real.
+  return min(
+    max(
+      0.89486648 + 2.92455131 * h + 2.03472797 * h**2 + -0.16509371 * h**3 + 0.00675759 * h**4,
+      0,
+    ),
+    262.5,  # 250 uL nominal + 5% tolerance (matches _compute_height_from_volume)
   )
 
 
