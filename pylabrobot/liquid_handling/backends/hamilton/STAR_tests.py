@@ -14,6 +14,7 @@ from pylabrobot.resources import (
   PLT_CAR_P3AC_A01,
   TIP_CAR_288_C00,
   TIP_CAR_480_A00,
+  TIP_CAR_NTR_A00,
   AGenBio_1_troughplate_190000uL_Fl,
   CellTreat_96_wellplate_350ul_Ub,
   Container,
@@ -24,10 +25,11 @@ from pylabrobot.resources import (
   Rotation,
   hamilton_96_tiprack_1000uL,
   hamilton_96_tiprack_1000uL_filter,
+  hamilton_96_tiprack_50uL_NTR,
   no_volume_tracking,
   set_tip_tracking,
 )
-from pylabrobot.resources.hamilton import STARLetDeck, hamilton_96_tiprack_300uL_filter
+from pylabrobot.resources.hamilton import STARLetDeck, TipSize, hamilton_96_tiprack_300uL_filter
 
 from pylabrobot.resources.errors import NoTipError
 
@@ -615,6 +617,33 @@ class TestSTARLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
         _any_write_and_read_command_call("C0ERid0003xs01179xd0yh2418za2164zh2450ze2450"),
       ]
     )
+
+  async def test_core_96_tip_drop_nested_tip_rack_uses_tipspot_collar_z(self):
+    ntr_car = TIP_CAR_NTR_A00(name="ntr carrier")
+    ntr_car[0] = ntr_rack = hamilton_96_tiprack_50uL_NTR(name="ntr_rack")
+    self.deck.assign_child_resource(ntr_car, rails=25)
+
+    tip_spot_a1 = ntr_rack.get_item("A1")
+    prototype_tip = tip_spot_a1.make_tip()
+    tip_engage_height_from_tipspot = prototype_tip.total_tip_length - prototype_tip.fitting_depth
+    if prototype_tip.tip_size == TipSize.LOW_VOLUME:
+      tip_engage_height_from_tipspot += 2
+    elif prototype_tip.tip_size != TipSize.STANDARD_VOLUME:
+      tip_engage_height_from_tipspot -= 2
+
+    expected_z = round(
+      (tip_spot_a1.get_location_wrt(self.deck).z + tip_engage_height_from_tipspot) * 10
+    )
+    old_flat_rack_z = round((ntr_rack.get_location_wrt(self.deck).z + 1.45) * 10)
+    self.assertNotEqual(expected_z, old_flat_rack_z)
+
+    await self.lh.pick_up_tips96(ntr_rack)
+    self.STAR._write_and_read_command.reset_mock()
+    await self.lh.drop_tips96(ntr_rack)
+
+    cmd = self.STAR._write_and_read_command.call_args.kwargs["cmd"]
+    self.assertIn(f"za{expected_z:04}", cmd)
+    self.assertNotIn(f"za{old_flat_rack_z:04}", cmd)
 
   async def test_core_96_tip_discard(self):
     await self.lh.pick_up_tips96(self.tip_rack)  # pick up tips first
