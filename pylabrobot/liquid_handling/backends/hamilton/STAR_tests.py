@@ -618,6 +618,22 @@ class TestSTARLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
       ]
     )
 
+  async def test_core_96_tip_drop_with_tip_tracking_uses_prototype_tip(self):
+    set_tip_tracking(enabled=True)
+    try:
+      await self.lh.pick_up_tips96(self.tip_rack)  # pick up tips first
+      self.STAR._write_and_read_command.reset_mock()
+
+      await self.lh.drop_tips96(self.tip_rack)
+
+      self.STAR._write_and_read_command.assert_has_calls(
+        [
+          _any_write_and_read_command_call("C0ERid0003xs01179xd0yh2418za2164zh2450ze2450"),
+        ]
+      )
+    finally:
+      set_tip_tracking(enabled=False)
+
   async def test_core_96_tip_drop_nested_tip_rack_uses_tipspot_collar_z(self):
     ntr_car = TIP_CAR_NTR_A00(name="ntr carrier")
     ntr_car[0] = ntr_rack = hamilton_96_tiprack_50uL_NTR(name="ntr_rack")

@@ -2530,7 +2530,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     tip_engage_height_from_tipspot = tip_length - fitting_depth
 
     # Tip size–based z-adjustment
-    h_tip = self._get_hamilton_tip([tip_spot_a1])
+    h_tip = prototypical_tip
     if h_tip.tip_size == TipSize.LOW_VOLUME:
       tip_engage_height_from_tipspot += 2
     elif h_tip.tip_size != TipSize.STANDARD_VOLUME:
@@ -2582,7 +2582,9 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
     if isinstance(drop.resource, TipRack):
       tip_spot_a1 = drop.resource.get_item("A1")
       position = tip_spot_a1.get_location_wrt(self.deck) + tip_spot_a1.center() + drop.offset
-      h_tip = self._get_hamilton_tip([tip_spot_a1])
+      h_tip = tip_spot_a1.make_tip()
+      if not isinstance(h_tip, HamiltonTip):
+        raise TypeError("Tip type must be HamiltonTip.")
       tip_engage_height_from_tipspot = h_tip.total_tip_length - h_tip.fitting_depth
       if h_tip.tip_size == TipSize.LOW_VOLUME:
         tip_engage_height_from_tipspot += 2
