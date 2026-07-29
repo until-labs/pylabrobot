@@ -112,6 +112,7 @@ def hamilton_96_tiprack_50uL_filter(name: str, with_tips: bool = True) -> TipRac
   )
 
 
+@compact_factory
 def hamilton_96_tiprack_50uL(name: str, with_tips: bool = True) -> TipRack:
   """Hamilton cat. no.: 235966 (non-sterile) 235978 (sterile)
   Hamilton name: 'TIP_50ul'

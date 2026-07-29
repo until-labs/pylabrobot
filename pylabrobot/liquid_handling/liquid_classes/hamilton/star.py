@@ -35,12 +35,17 @@ def get_star_liquid_class(
       partial dispense.
   """
 
-  # Tip volumes from resources (mostly where they have filters) are slightly different from the ones
-  # in the liquid class mapping, so we need to map them here. If no mapping is found, we use the
-  # given maximal volume of the tip.
+  # A resource reports the tip's true maximal volume, which is larger than the nominal
+  # volume the liquid class mapping is keyed on. Map each one here. Every Hamilton tip
+  # rack in pylabrobot.resources.hamilton.tip_racks is covered. If no mapping is found,
+  # we use the given maximal volume of the tip.
   tip_volume = int(
     {
-      360.0: 300.0,
+      15.0: 10.0,  # hamilton_96_tiprack_10uL
+      60.0: 50.0,  # hamilton_96_tiprack_50uL_filter
+      65.0: 50.0,  # hamilton_96_tiprack_50uL, _50uL_NTR
+      360.0: 300.0,  # hamilton_96_tiprack_300uL_filter, _300uL_filter_slim
+      400.0: 300.0,  # hamilton_96_tiprack_300uL
       1065.0: 1000.0,
       1250.0: 1000.0,
       4367.0: 4000.0,
