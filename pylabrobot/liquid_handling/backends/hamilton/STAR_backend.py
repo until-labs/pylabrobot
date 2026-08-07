@@ -3136,9 +3136,7 @@ class STARBackend(HamiltonLiquidHandler, HamiltonHeaterShakerInterface):
 
     if auto_surface_following_distance:
       follow_resource = (
-        dispense.wells[0]
-        if isinstance(dispense, MultiHeadDispensePlate)
-        else dispense.container
+        dispense.wells[0] if isinstance(dispense, MultiHeadDispensePlate) else dispense.container
       )
       if not follow_resource.supports_compute_height_volume_functions():
         raise ValueError(

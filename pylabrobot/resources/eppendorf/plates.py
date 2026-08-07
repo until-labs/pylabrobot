@@ -108,6 +108,7 @@ def Eppendorf_96_wellplate_250ul_Vb(name: str, with_lid: bool = False) -> Plate:
     ),
   )
 
+
 @compact_factory
 def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = False) -> Plate:
   """
@@ -142,8 +143,9 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted(name: str, with_lid: bool = Fals
       # a container with height<->volume functions"); max_volume auto-derives from the curve.
       compute_volume_from_height=(_compute_volume_from_height_Eppendorf_96_wellplate_250ul_Vb),
       compute_height_from_volume=(_compute_height_from_volume_Eppendorf_96_wellplate_250ul_Vb),
-    )
+    ),
   )
+
 
 @compact_factory
 def Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name: str, with_lid: bool = False) -> Plate:
@@ -155,7 +157,7 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name: str, with_lid: bool 
     model="Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste",
     plate_type="skirted",
     ordered_items=create_ordered_items_2d(
-      klass=Well,                    # This tells it to create Well instances
+      klass=Well,  # This tells it to create Well instances
       num_items_x=12,
       num_items_y=8,
       dx=12.4,
@@ -169,6 +171,6 @@ def Eppendorf_96_wellplate_250ul_Vb_semiskirted_waste(name: str, with_lid: bool 
       bottom_type=WellBottomType.V,
       material_z_thickness=0.6,
       cross_section_type=CrossSectionType.CIRCLE,
-      max_volume=5000.0              # 👈 This goes into each Well constructor
-    )
+      max_volume=5000.0,  # 👈 This goes into each Well constructor
+    ),
   )

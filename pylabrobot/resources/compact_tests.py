@@ -30,9 +30,8 @@ from pylabrobot.resources.hamilton.tip_racks import (
 from pylabrobot.resources.nest.plates import nest_12_troughplate_15000uL_Vb
 from pylabrobot.resources.nested_resource import NestedResource
 from pylabrobot.resources.resource import Resource
-from pylabrobot.resources.tip_rack import TipSpot
 from pylabrobot.resources.thermo_fisher.plates import Thermo_Nunc_96_wellplate_400uL_Fb
-
+from pylabrobot.resources.tip_rack import TipSpot
 
 # All labeled factories we expect to round-trip. Each entry is a
 # zero-arg-after-name builder; the test loops over them.

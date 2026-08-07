@@ -193,8 +193,7 @@ def serialize_compact(resource: "Resource") -> Dict[str, Any]:
         assignments[str(slot_idx)] = serialize_compact(site.resource)
     if _factory_declares_modules(blob["factory"]):
       modules: Dict[str, Any] = {
-        str(slot_idx): serialize_compact(site)
-        for slot_idx, site in resource.sites.items()
+        str(slot_idx): serialize_compact(site) for slot_idx, site in resource.sites.items()
       }
       if modules:
         blob["modules"] = modules
@@ -313,8 +312,7 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
   factory_kwargs: Dict[str, Any] = {"name": name}
   if "modules" in blob:
     factory_kwargs["modules"] = {
-      int(slot): deserialize_compact(mod_blob)
-      for slot, mod_blob in blob["modules"].items()
+      int(slot): deserialize_compact(mod_blob) for slot, mod_blob in blob["modules"].items()
     }
   if "with_tips" in blob:
     factory_kwargs["with_tips"] = blob["with_tips"]
@@ -353,9 +351,7 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
 
     for child_blob in blob["stacked"]:
       child = deserialize_compact(child_blob)
-      resource.assign_child_resource(
-        child, location=Coordinate(*child_blob["location"])
-      )
+      resource.assign_child_resource(child, location=Coordinate(*child_blob["location"]))
 
   return resource
 
