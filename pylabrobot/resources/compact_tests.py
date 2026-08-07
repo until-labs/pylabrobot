@@ -7,7 +7,7 @@ a full-deck fixture and the MFXCarrier-with-modules edge case.
 import unittest
 
 from pylabrobot.resources.carrier import MFXCarrier
-from pylabrobot.resources.compact import compact_factory, serialize_compact
+from pylabrobot.resources.compact import compact_factory
 from pylabrobot.resources.corning.costar.plates import Cor_Cos_12_wellplate_6900ul_Fb
 from pylabrobot.resources.corning.plates import Cor_96_wellplate_2mL_Vb
 from pylabrobot.resources.eppendorf.plates import (
