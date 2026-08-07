@@ -1,6 +1,18 @@
+import re
+from pathlib import Path
+
 from setuptools import find_packages, setup
 
-from pylabrobot.__version__ import __version__
+# Read the version without importing the package. During an isolated (PEP 517)
+# build, pylabrobot's runtime dependencies (typing_extensions, ...) are not yet
+# installed, so `import pylabrobot` fails while getting build requirements.
+# __version__.py is a bare assignment, so a regex read is safe.
+_version_file = Path(__file__).parent / "pylabrobot" / "__version__.py"
+_version_text = _version_file.read_text(encoding="utf-8")
+_version_match = re.search(r'__version__\s*=\s*"([^"]+)"', _version_text)
+if _version_match is None:
+  raise RuntimeError("Could not find __version__ in pylabrobot/__version__.py")
+__version__ = _version_match.group(1)
 
 with open("README.md", "r", encoding="utf-8") as f:
   long_description = f.read()
