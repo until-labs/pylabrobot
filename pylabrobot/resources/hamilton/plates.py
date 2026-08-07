@@ -10,6 +10,8 @@ from pylabrobot.resources.well import (
   Well,
   WellBottomType,
 )
+
+
 @compact_factory
 def Hamilton_1_troughplate_300ml(name: str) -> Plate:
   """
@@ -49,9 +51,9 @@ def Hamilton_1_troughplate_300ml(name: str) -> Plate:
       Well,
       num_items_x=1,
       num_items_y=1,
-      dx=10.3, # measured
-      dy=7.3, # measured
-      dz=6.9, # measured
+      dx=10.3,  # measured
+      dy=7.3,  # measured
+      dz=6.9,  # measured
       item_dx=INNER_WELL_WIDTH,
       item_dy=INNER_WELL_HEIGHT,
       **well_kwargs,

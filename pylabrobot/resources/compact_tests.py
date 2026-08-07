@@ -5,6 +5,7 @@ a full-deck fixture and the MFXCarrier-with-modules edge case.
 """
 
 import unittest
+from typing import cast
 
 from pylabrobot.resources.carrier import MFXCarrier
 from pylabrobot.resources.compact import compact_factory
@@ -27,10 +28,10 @@ from pylabrobot.resources.hamilton.tip_racks import (
   hamilton_96_tiprack_1000uL_filter,
 )
 from pylabrobot.resources.nest.plates import nest_12_troughplate_15000uL_Vb
+from pylabrobot.resources.nested_resource import NestedResource
 from pylabrobot.resources.resource import Resource
-from pylabrobot.resources.tip_rack import TipSpot
 from pylabrobot.resources.thermo_fisher.plates import Thermo_Nunc_96_wellplate_400uL_Fb
-
+from pylabrobot.resources.tip_rack import TipSpot
 
 # All labeled factories we expect to round-trip. Each entry is a
 # zero-arg-after-name builder; the test loops over them.
@@ -65,12 +66,17 @@ def _fixed_assembly_mfx(name: str) -> MFXCarrier:
   one resource, so its compact blob records only the qualified name plus any
   plate assignments, never a ``modules`` block.
   """
-  return MFX_CAR_L4_SHAKER(
-    name=name,
-    modules={
-      0: MFX_DWP_module_flat(name=f"{name}_m0"),
-      2: MFX_DWP_module_flat(name=f"{name}_m2"),
-    },
+  # ``compact_factory`` erases the wrapped return type to ``Callable``, so the
+  # factory call is typed ``Any``; cast back to the annotated return type.
+  return cast(
+    MFXCarrier,
+    MFX_CAR_L4_SHAKER(
+      name=name,
+      modules={
+        0: MFX_DWP_module_flat(name=f"{name}_m0"),
+        2: MFX_DWP_module_flat(name=f"{name}_m2"),
+      },
+    ),
   )
 
 
@@ -165,6 +171,7 @@ class TestMFXFixedAssemblyRoundTrip(unittest.TestCase):
     restored = Resource.deserialize_compact(blob)
     self.assertEqual(mfx, restored)
     # The modules are reconstructed by re-calling the factory, not from the blob.
+    assert isinstance(restored, MFXCarrier)
     self.assertEqual(sorted(restored.sites), [0, 2])
 
   def test_plate_assignment_round_trips(self):
@@ -293,6 +300,7 @@ class TestStackedResourceRoundTrip(unittest.TestCase):
     self.assertEqual([s["name"] for s in blob["stacked"][0]["stacked"]], ["ntr_top"])
     restored = Resource.deserialize_compact(blob)
     self.assertEqual(bottom, restored)
+    assert isinstance(restored, NestedResource)
     self.assertIs(restored.get_stack_top(), restored.get_resource("ntr_top"))
 
 
@@ -426,7 +434,7 @@ class TestCompactFactoryDecorator(unittest.TestCase):
       getattr(Eppendorf_96_wellplate_250ul_Vb_semiskirted, "_is_compact_factory", False)
     )
     self.assertEqual(
-      Eppendorf_96_wellplate_250ul_Vb_semiskirted._factory_qn,
+      getattr(Eppendorf_96_wellplate_250ul_Vb_semiskirted, "_factory_qn"),
       "pylabrobot.resources.eppendorf.plates.Eppendorf_96_wellplate_250ul_Vb_semiskirted",
     )
 

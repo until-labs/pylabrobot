@@ -23,15 +23,14 @@ from pylabrobot.resources import (
   Lid,
   ResourceStack,
   Rotation,
+  hamilton_96_tiprack_50uL_NTR,
   hamilton_96_tiprack_1000uL,
   hamilton_96_tiprack_1000uL_filter,
-  hamilton_96_tiprack_50uL_NTR,
   no_volume_tracking,
   set_tip_tracking,
 )
-from pylabrobot.resources.hamilton import STARLetDeck, TipSize, hamilton_96_tiprack_300uL_filter
-
 from pylabrobot.resources.errors import NoTipError
+from pylabrobot.resources.hamilton import STARLetDeck, TipSize, hamilton_96_tiprack_300uL_filter
 
 from .STAR_backend import (
   CommandSyntaxError,

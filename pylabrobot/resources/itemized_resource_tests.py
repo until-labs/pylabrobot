@@ -461,7 +461,9 @@ class TestChildTypeValidation(unittest.TestCase):
 
   def test_permissive_default_allows_any_resource(self):
     # ItemizedResource declares no allowed child types, so it accepts any Resource (back-compat).
-    ir = ItemizedResource("ir", size_x=10, size_y=10, size_z=10, ordered_items={})
+    ir: ItemizedResource[Resource] = ItemizedResource(
+      "ir", size_x=10, size_y=10, size_z=10, ordered_items={}
+    )
     ir.assign_child_resource(
       Resource("child", size_x=1, size_y=1, size_z=1), location=Coordinate.zero()
     )

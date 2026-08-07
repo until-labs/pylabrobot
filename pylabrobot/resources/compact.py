@@ -55,7 +55,7 @@ from __future__ import annotations
 import functools
 import importlib
 import inspect
-from typing import TYPE_CHECKING, Any, Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, cast
 
 if TYPE_CHECKING:
   from .resource import Resource
@@ -99,7 +99,7 @@ def _import_qualified(qn: str) -> Callable:
     raise ValueError(f"Not a qualified name: {qn!r}")
   module = importlib.import_module(module_path)
   try:
-    return getattr(module, attr)
+    return cast(Callable[..., Any], getattr(module, attr))
   except AttributeError as exc:
     raise ImportError(
       f"Could not resolve {qn!r}: attribute {attr!r} not found on {module_path!r}"
@@ -115,7 +115,8 @@ def _factory_qn_or_raise(resource: "Resource") -> str:
       f"supported for resources constructed through labeled factories — label "
       f"the factory or fall back to the verbose `Resource.serialize()`."
     )
-  return qn
+  # ``_factory_qn`` is always the string the decorator set; getattr returns Any.
+  return cast(str, qn)
 
 
 def _factory_declares_modules(qn: str) -> bool:
@@ -192,8 +193,7 @@ def serialize_compact(resource: "Resource") -> Dict[str, Any]:
         assignments[str(slot_idx)] = serialize_compact(site.resource)
     if _factory_declares_modules(blob["factory"]):
       modules: Dict[str, Any] = {
-        str(slot_idx): serialize_compact(site)
-        for slot_idx, site in resource.sites.items()
+        str(slot_idx): serialize_compact(site) for slot_idx, site in resource.sites.items()
       }
       if modules:
         blob["modules"] = modules
@@ -285,7 +285,7 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
   kwarg is omitted from the call. The round-trip still works as long as
   the factory always produces an instance with the recorded ``name``.
   """
-  from .carrier import MFXCarrier
+  from .carrier import Carrier, MFXCarrier
   from .deck import Deck
 
   if not blob.get(COMPACT_VERSION_KEY):
@@ -312,17 +312,22 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
   factory_kwargs: Dict[str, Any] = {"name": name}
   if "modules" in blob:
     factory_kwargs["modules"] = {
-      int(slot): deserialize_compact(mod_blob)
-      for slot, mod_blob in blob["modules"].items()
+      int(slot): deserialize_compact(mod_blob) for slot, mod_blob in blob["modules"].items()
     }
   if "with_tips" in blob:
     factory_kwargs["with_tips"] = blob["with_tips"]
   resource = _invoke_factory(factory, **factory_kwargs)
 
   if isinstance(resource, Deck):
+    # Deck children are placed by ``rails``, which only ``HamiltonDeck`` accepts
+    # (the serialize side records rails via the Hamilton rail math). The deck
+    # factory always produces a HamiltonDeck here.
+    from .hamilton.hamilton_decks import HamiltonDeck
+
+    hamilton_deck = cast(HamiltonDeck, resource)
     for child_blob in blob.get("children", []):
       child = deserialize_compact(child_blob)
-      resource.assign_child_resource(child, rails=child_blob["rails"])
+      hamilton_deck.assign_child_resource(child, rails=child_blob["rails"])
     return resource
 
   if isinstance(resource, MFXCarrier):
@@ -332,10 +337,12 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
       resource[int(slot)].assign_child_resource(deserialize_compact(plate_blob))
     return resource
 
-  # Standard carriers and leaf resources: assignments go via __setitem__.
+  # Standard carriers and leaf resources: assignments go via __setitem__. Only a
+  # Carrier is ever recorded with an ``assignments`` block (see serialize_compact),
+  # so the target here is always a Carrier.
   for slot, child_blob in blob.get("assignments", {}).items():
     child = deserialize_compact(child_blob)
-    resource[int(slot)] = child
+    cast(Carrier, resource)[int(slot)] = child
 
   # Replay any stacked-on resources (a NestedTipRack on an NTR, a Lid on a Plate),
   # each at its recorded location — the inverse of the ``stacked`` block above.
@@ -344,9 +351,7 @@ def deserialize_compact(blob: Dict[str, Any]) -> "Resource":
 
     for child_blob in blob["stacked"]:
       child = deserialize_compact(child_blob)
-      resource.assign_child_resource(
-        child, location=Coordinate(*child_blob["location"])
-      )
+      resource.assign_child_resource(child, location=Coordinate(*child_blob["location"]))
 
   return resource
 
@@ -364,7 +369,7 @@ def _invoke_factory(factory: Callable, **kwargs) -> "Resource":
   real = inspect.unwrap(factory)
   sig = inspect.signature(real)
   accepted = {k: v for k, v in kwargs.items() if k in sig.parameters}
-  return factory(**accepted)
+  return cast("Resource", factory(**accepted))
 
 
 def _rails_for_child(child: "Resource", deck: "Resource") -> int:
