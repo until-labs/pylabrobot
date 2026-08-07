@@ -9,6 +9,7 @@ from .carrier import (
   PlateHolder,
   ResourceHolder,
   TipCarrier,
+  TipRackHolder,
   create_homogeneous_resources,
 )
 from .coordinate import Coordinate
@@ -34,7 +35,7 @@ class CarrierTests(unittest.TestCase):
       size_y=497.0,
       size_z=13.0,
       sites=create_homogeneous_resources(
-        klass=ResourceHolder,
+        klass=TipRackHolder,
         locations=[
           Coordinate(10, 20, 30),
           Coordinate(10, 50, 30),
@@ -226,7 +227,7 @@ class CarrierTests(unittest.TestCase):
         "children": [
           {
             "name": "tip_car-0",
-            "type": "ResourceHolder",
+            "type": "TipRackHolder",
             "size_x": 10,
             "size_y": 10,
             "size_z": 0,
@@ -246,7 +247,7 @@ class CarrierTests(unittest.TestCase):
           },
           {
             "name": "tip_car-1",
-            "type": "ResourceHolder",
+            "type": "TipRackHolder",
             "size_x": 10,
             "size_y": 10,
             "size_z": 0,
@@ -266,7 +267,7 @@ class CarrierTests(unittest.TestCase):
           },
           {
             "name": "tip_car-2",
-            "type": "ResourceHolder",
+            "type": "TipRackHolder",
             "size_x": 10,
             "size_y": 10,
             "size_z": 0,
@@ -286,7 +287,7 @@ class CarrierTests(unittest.TestCase):
           },
           {
             "name": "tip_car-3",
-            "type": "ResourceHolder",
+            "type": "TipRackHolder",
             "size_x": 10,
             "size_y": 10,
             "size_z": 0,
@@ -306,7 +307,7 @@ class CarrierTests(unittest.TestCase):
           },
           {
             "name": "tip_car-4",
-            "type": "ResourceHolder",
+            "type": "TipRackHolder",
             "size_x": 10,
             "size_y": 10,
             "size_z": 0,

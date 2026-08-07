@@ -30,7 +30,11 @@ class TecanTipCarrier(TipCarrier, TecanResource):
       size_x,
       size_y,
       size_z,
-      sites,
+      # Tecan tip carriers hold generic ResourceHolders (wash troughs, waste
+      # stations), not only TipRackHolders like the base TipCarrier. Widening
+      # the stored holder type cannot be expressed once TipCarrier narrowed to
+      # TipRackHolder; see PR notes.
+      sites,  # type: ignore[arg-type]
       category=category,
       model=model,
     )
