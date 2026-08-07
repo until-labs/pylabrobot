@@ -202,3 +202,42 @@ jobs:
 
       - name: Publish to pyx
         run: uv publish dist/* --publish-url https://api.pyx.dev/v1/upload/until/main --trusted-publishing=always
+
+  pypiserver-publish:
+    name: Mirror distributions to the on-prem pypiserver
+    needs: build
+    # Tailnet runner: the on-prem registry (cradle-hpc1:9090) is reachable only on
+    # the tailnet, and the grouper serves this repo's ephemeral runners with host
+    # networking (see until-data docs/infra/github-runners.md).
+    runs-on: [tailnet]
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ">=0.9.27"
+
+      - name: Download distributions
+        uses: actions/download-artifact@v5
+        with:
+          name: dists
+          path: dist/
+
+      # Same built dists as the pyx job, mirrored to the on-prem pypiserver so
+      # tailnet CI (and dev) can resolve pylabrobot without pyx. Basic-auth upload
+      # creds, matching until-data's mirror-python-packages workflow.
+      - name: Publish to pypiserver
+        env:
+          UV_PUBLISH_USERNAME: ${{ secrets.PYPISERVER_UPLOAD_USERNAME }}
+          UV_PUBLISH_PASSWORD: ${{ secrets.PYPISERVER_UPLOAD_PASSWORD }}
+        run: |
+          : "${UV_PUBLISH_USERNAME:?set PYPISERVER_UPLOAD_USERNAME}"
+          : "${UV_PUBLISH_PASSWORD:?set PYPISERVER_UPLOAD_PASSWORD}"
+          uv publish \
+            --publish-url http://cradle-hpc1:9090/python/ \
+            --check-url http://cradle-hpc1:9090/python/simple/ \
+            --allow-insecure-host cradle-hpc1 \
+            dist/*
