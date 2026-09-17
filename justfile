@@ -1,4 +1,4 @@
-# Release helpers for the pyx index.
+# Release helpers for the internal package registry.
 #
 # The published version is driven by the git tag. `just tagnewversion v0.1.7`:
 #   1. bumps pylabrobot/__version__.py to match the tag (this is the version
@@ -60,7 +60,7 @@ tagnewversion tag:
     echo "  version  $version   (pylabrobot/__version__.py)"
     echo "  commit   on $branch"
     echo "  push     $remote: $branch + $publish + tag $tag  ($publish fast-forwards)"
-    echo "  trigger  publish.yml -> build + publish to pyx"
+    echo "  trigger  publish.yml -> build + publish to the internal registry"
     if [ -z "${YES:-}" ]; then
       read -r -p "Proceed? [y/N] " ans
       case "${ans:-}" in y|Y) ;; *) echo "aborted; nothing changed."; exit 1 ;; esac
@@ -87,4 +87,4 @@ tagnewversion tag:
 
     git tag -a "$tag" -m "Release $tag"
     git push --atomic "$remote" "HEAD:$branch" "HEAD:$publish" "refs/tags/$tag"
-    echo "pushed $tag and advanced $remote/$publish; publish.yml is building it for pyx."
+    echo "pushed $tag and advanced $remote/$publish; publish.yml is building it for the internal registry."

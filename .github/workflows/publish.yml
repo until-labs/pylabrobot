@@ -1,4 +1,4 @@
-name: Publish to pyx
+name: Publish Python package
 
 on:
   push:
@@ -172,43 +172,10 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  pyx-publish:
-    name: Publish distributions to pyx
-    needs: build
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      id-token: write
-
-    environment: pyx-publish
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: ">=0.9.27"
-
-      - name: Download distributions
-        uses: actions/download-artifact@v5
-        with:
-          name: dists
-          path: dist/
-
-      - name: Publish to pyx
-        run: uv publish dist/* --publish-url https://api.pyx.dev/v1/upload/until/main --trusted-publishing=always
-
   pypiserver-publish:
-    name: Mirror distributions to the on-prem pypiserver
+    name: Publish distributions to the internal registry
     needs: build
-    # Tailnet runner: the on-prem registry (cradle-hpc1:9090) is reachable only on
-    # the tailnet, and the grouper serves this repo's ephemeral runners with host
-    # networking (see until-data docs/infra/github-runners.md).
+    # The registry is available only on the tailnet.
     runs-on: [tailnet]
 
     permissions:
@@ -226,9 +193,7 @@ jobs:
           name: dists
           path: dist/
 
-      # Same built dists as the pyx job, mirrored to the on-prem pypiserver so
-      # tailnet CI (and dev) can resolve pylabrobot without pyx. Basic-auth upload
-      # creds, matching until-data's mirror-python-packages workflow.
+      # Publish the tested distributions through the registry's HTTPS endpoint.
       - name: Publish to pypiserver
         env:
           UV_PUBLISH_USERNAME: ${{ secrets.PYPISERVER_UPLOAD_USERNAME }}
@@ -237,7 +202,6 @@ jobs:
           : "${UV_PUBLISH_USERNAME:?set PYPISERVER_UPLOAD_USERNAME}"
           : "${UV_PUBLISH_PASSWORD:?set PYPISERVER_UPLOAD_PASSWORD}"
           uv publish \
-            --publish-url http://cradle-hpc1:9090/python/ \
-            --check-url http://cradle-hpc1:9090/python/simple/ \
-            --allow-insecure-host cradle-hpc1 \
+            --publish-url https://artifacts.untillabs.com/python/ \
+            --check-url https://artifacts.untillabs.com/python/simple/ \
             dist/*
