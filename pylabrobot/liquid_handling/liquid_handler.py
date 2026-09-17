@@ -1682,6 +1682,8 @@ class LiquidHandler(Resource, Machine):
       >>> await lh.aspirate96(plate, volume=50)
       >>> await lh.aspirate96(container, volume=50)
 
+    With volume tracking off, this method leaves tip and well volumes unchanged.
+
     Args:
       resource: Resource object or list of wells.
       volume: The volume to aspirate through each channel
@@ -1758,8 +1760,9 @@ class LiquidHandler(Resource, Machine):
           liquids = container.tracker.remove_liquid(volume=volume)  # type: ignore
           all_liquids.append(liquids)
 
-        for liquid, vol in reversed(liquids):
-          tip.tracker.add_liquid(liquid=liquid, volume=vol)
+        if does_volume_tracking() and not tip.tracker.is_disabled:
+          for liquid, vol in reversed(liquids):
+            tip.tracker.add_liquid(liquid=liquid, volume=vol)
 
       aspiration = MultiHeadAspirationContainer(
         container=container,
@@ -1796,8 +1799,9 @@ class LiquidHandler(Resource, Machine):
           liquids = well.tracker.remove_liquid(volume=volume)  # type: ignore
           all_liquids.append(liquids)
 
-        for liquid, vol in reversed(liquids):
-          tip.tracker.add_liquid(liquid=liquid, volume=vol)
+        if does_volume_tracking() and not tip.tracker.is_disabled:
+          for liquid, vol in reversed(liquids):
+            tip.tracker.add_liquid(liquid=liquid, volume=vol)
 
       aspiration = MultiHeadAspirationPlate(
         wells=cast(List[Well], containers),
@@ -1815,7 +1819,7 @@ class LiquidHandler(Resource, Machine):
       await self.backend.aspirate96(aspiration=aspiration, **backend_kwargs)
     except Exception:
       for tip in tips:
-        if tip is not None:
+        if tip is not None and does_volume_tracking() and not tip.tracker.is_disabled:
           tip.tracker.rollback()
       for container in containers:
         if does_volume_tracking() and not container.tracker.is_disabled:
@@ -1823,7 +1827,7 @@ class LiquidHandler(Resource, Machine):
       raise
     else:
       for tip in tips:
-        if tip is not None:
+        if tip is not None and does_volume_tracking() and not tip.tracker.is_disabled:
           tip.tracker.commit()
       for container in containers:
         if does_volume_tracking() and not container.tracker.is_disabled:
@@ -1846,6 +1850,8 @@ class LiquidHandler(Resource, Machine):
       Dispense an entire 96 well plate:
 
       >>> await lh.dispense96(plate, volume=50)
+
+    With volume tracking off, this method leaves tip and well volumes unchanged.
 
     Args:
       resource: Resource object or list of wells.
@@ -1886,6 +1892,7 @@ class LiquidHandler(Resource, Machine):
     tips = [channel.get_tip() if channel.has_tip else None for channel in self.head96.values()]
     all_liquids: List[List[Tuple[Optional[Liquid], float]]] = []
     dispense: Union[MultiHeadDispensePlate, MultiHeadDispenseContainer]
+    liquids: List[Tuple[Optional[Liquid], float]]
 
     # Convert everything to floats to handle exotic number types
     volume = float(volume)
@@ -1912,7 +1919,10 @@ class LiquidHandler(Resource, Machine):
         if tip is None:
           continue
 
-        liquids = tip.tracker.remove_liquid(volume=volume)
+        if tip.tracker.is_disabled or not does_volume_tracking():
+          liquids = [(None, volume)]
+        else:
+          liquids = tip.tracker.remove_liquid(volume=volume)
         reversed_liquids = list(reversed(liquids))
         all_liquids.append(reversed_liquids)
 
@@ -1945,8 +1955,6 @@ class LiquidHandler(Resource, Machine):
         if tip is None:
           continue
 
-        # even if the volume tracker is disabled, a liquid (None, volume) is added to the list
-        # during the aspiration command
         if tip.tracker.is_disabled or not does_volume_tracking():
           liquids = [(None, volume)]
         else:
@@ -1974,7 +1982,7 @@ class LiquidHandler(Resource, Machine):
       await self.backend.dispense96(dispense=dispense, **backend_kwargs)
     except Exception:
       for tip in tips:
-        if tip is not None:
+        if tip is not None and does_volume_tracking() and not tip.tracker.is_disabled:
           tip.tracker.rollback()
       for container in containers:
         if does_volume_tracking() and not container.tracker.is_disabled:
@@ -1982,7 +1990,7 @@ class LiquidHandler(Resource, Machine):
       raise
     else:
       for tip in tips:
-        if tip is not None:
+        if tip is not None and does_volume_tracking() and not tip.tracker.is_disabled:
           tip.tracker.commit()
       for container in containers:
         if does_volume_tracking() and not container.tracker.is_disabled:

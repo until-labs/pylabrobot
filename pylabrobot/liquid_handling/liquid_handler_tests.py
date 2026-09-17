@@ -1287,6 +1287,72 @@ class TestLiquidHandlerVolumeTracking(unittest.IsolatedAsyncioTestCase):
 
     await self.lh.return_tips96()
 
+  async def test_96_head_tracking_off_repeated_transfer(self):
+    await self.lh.pick_up_tips96(self.tip_rack)
+    set_volume_tracking(False)
+    tips = [channel.get_tip() for channel in self.lh.head96.values()]
+    for tip in tips:
+      tip.tracker.set_liquids([(None, 200)])
+    for source, destination in itertools.product([self.plate, self.single_well_plate], repeat=2):
+      with self.subTest(source=source.name, destination=destination.name):
+        for _ in range(3):
+          await self.lh.aspirate96(source, volume=200)
+          await self.lh.dispense96(destination, volume=200)
+        self.assertTrue(all(tip.tracker.get_used_volume() == 200 for tip in tips))
+        self.assertTrue(all(well.tracker.get_used_volume() == 0 for well in source.get_all_items()))
+
+  async def test_96_head_tracking_off_dispense_without_recorded_liquid(self):
+    await self.lh.pick_up_tips96(self.tip_rack)
+    set_volume_tracking(False)
+    for destination in [self.plate, self.single_well_plate]:
+      with self.subTest(destination=destination.name):
+        await self.lh.dispense96(destination, volume=200)
+    self.assertTrue(
+      all(channel.get_tip().tracker.get_used_volume() == 0 for channel in self.lh.head96.values())
+    )
+
+  async def test_96_head_disabled_tip_trackers(self):
+    await self.lh.pick_up_tips96(self.tip_rack)
+    tips = [channel.get_tip() for channel in self.lh.head96.values()]
+    for tip in tips:
+      tip.tracker.set_liquids([(None, 200)])
+      tip.tracker.disable()
+    for plate in [self.plate, self.single_well_plate]:
+      with self.subTest(plate=plate.name):
+        volume_per_well = 200 * 96 / plate.num_items
+        for well in plate.get_all_items():
+          well.tracker.set_liquids([(None, volume_per_well)])
+        await self.lh.aspirate96(plate, volume=200)
+        await self.lh.dispense96(plate, volume=200)
+        self.assertTrue(all(tip.tracker.get_used_volume() == 200 for tip in tips))
+        self.assertTrue(
+          all(well.tracker.get_used_volume() == volume_per_well for well in plate.get_all_items())
+        )
+
+  async def test_96_head_volume_tracking_backend_failure(self):
+    await self.lh.pick_up_tips96(self.tip_rack)
+    for tracking in [True, False]:
+      for plate in [self.plate, self.single_well_plate]:
+        for operation in ["aspirate96", "dispense96"]:
+          with self.subTest(tracking=tracking, plate=plate.name, operation=operation):
+            set_volume_tracking(tracking)
+            volume_per_well = 200 * 96 / plate.num_items
+            for well in plate.get_all_items():
+              well.tracker.set_liquids([(None, volume_per_well)])
+            for channel in self.lh.head96.values():
+              channel.get_tip().tracker.set_liquids([(None, 100)])
+            with unittest.mock.patch.object(
+              self.backend, operation, side_effect=RuntimeError("backend failed")
+            ):
+              with self.assertRaisesRegex(RuntimeError, "backend failed"):
+                await getattr(self.lh, operation)(plate, volume=100)
+            self.assertTrue(
+              all(c.get_tip().tracker.get_used_volume() == 100 for c in self.lh.head96.values())
+            )
+            self.assertTrue(
+              all(w.tracker.get_used_volume() == volume_per_well for w in plate.get_all_items())
+            )
+
 
 class TestLiquidHandlerCrossContaminationTracking(unittest.IsolatedAsyncioTestCase):
   async def asyncSetUp(self):
