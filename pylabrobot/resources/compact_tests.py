@@ -25,6 +25,7 @@ from pylabrobot.resources.hamilton.tip_racks import (
   hamilton_96_tiprack_50uL_filter,
   hamilton_96_tiprack_50uL_NTR,
   hamilton_96_tiprack_300uL_filter,
+  hamilton_96_tiprack_300uL_filter_182040,
   hamilton_96_tiprack_1000uL_filter,
 )
 from pylabrobot.resources.nest.plates import nest_12_troughplate_15000uL_Vb
@@ -41,6 +42,7 @@ _LEAF_BUILDERS = [
   lambda n: hamilton_96_tiprack_50uL_filter(name=n),
   lambda n: hamilton_96_tiprack_50uL_NTR(name=n),
   lambda n: hamilton_96_tiprack_300uL_filter(name=n),
+  lambda n: hamilton_96_tiprack_300uL_filter_182040(name=n),
   lambda n: hamilton_96_tiprack_1000uL_filter(name=n),
   lambda n: nest_12_troughplate_15000uL_Vb(name=n),
   lambda n: Hamilton_1_troughplate_300ml(name=n),
