@@ -14,8 +14,8 @@ from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.liquid_handling.backends.hamilton.STAR_chatterbox import STARChatterboxBackend
 from pylabrobot.resources.carrier import Coordinate
 from pylabrobot.resources.hamilton import (
-  STARDeck,
   TIP_CAR_480_A00,
+  STARDeck,
   hamilton_96_tiprack_10uL,
   hamilton_96_tiprack_10uL_filter,
   hamilton_96_tiprack_50uL,
