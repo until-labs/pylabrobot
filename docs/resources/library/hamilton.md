@@ -72,6 +72,10 @@ Sometimes called "reagent carriers" in Hamilton jargon.
 
 ### TipRacks
 
+The Hamilton 182040 CO-RE I metal tip adapter is available as `hamilton_96_tiprack_300uL_filter_182040`. It holds 96 filtered 300 uL tips. Use `with_tips=False` for an empty adapter. Pick up tips from a standard rack, drop them onto the adapter, then pick them up again.
+
+This factory uses the [upstream CO-RE I adapter geometry](https://github.com/PyLabRobot/pylabrobot/blob/main/pylabrobot/resources/hamilton/tip_racks.py) in the legacy carrier seat frame. Its footprint is the standard carrier envelope. The adapter top is 12.5 mm above the seat (22 mm body minus 9.5 mm inset). Tip spots mark tip bottoms. Upstream marks the CO-RE I body as unmeasured. Instrument teaching remains necessary to confirm these positions.
+
 | Description | Image | PLR definition |
 | - | - | - |
 | Hamilton 96 tip rack 10uL.<br>Hamilton name: `LT`.<br>Part number 235900 (non-sterile), 235935 (sterile).<br>[Hamilton website](https://www.hamiltoncompany.com/consumables-labware-accessories/co-re-and-co-re-ii-tips/10-μl-co-re-ii-tips) | ![](img/hamilton/tip_racks/hamilton_96_tiprack_10uL.jpg.avif) | `hamilton_96_tiprack_10uL` |

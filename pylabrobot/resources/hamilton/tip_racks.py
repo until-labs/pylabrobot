@@ -175,6 +175,38 @@ def hamilton_96_tiprack_50uL_NTR(name: str, with_tips: bool = True) -> NestedTip
 
 
 @compact_factory
+def hamilton_96_tiprack_300uL_filter_182040(name: str, with_tips: bool = True) -> TipRack:
+  """Hamilton 182040 CO-RE I tip adapter with 96 filtered 300 uL tips.
+
+  The origin and footprint use the legacy tip-carrier seat frame. The adapter
+  top is 12.5 mm above the seat: a 22 mm body with a 9.5 mm inset. Tip spots
+  mark tip bottoms. Upstream has not measured the CO-RE I body.
+  """
+  tip = standard_volume_tip_with_filter()
+  return TipRack(
+    name=name,
+    size_x=122.4,
+    size_y=82.6,
+    size_z=22.0 - 9.5,
+    model=hamilton_96_tiprack_300uL_filter_182040.__name__,
+    ordered_items=create_ordered_items_2d(
+      TipSpot,
+      num_items_x=12,
+      num_items_y=8,
+      dx=7.2,
+      dy=5.3,
+      dz=22.0 - 9.5 - (tip.total_tip_length - tip.fitting_depth),
+      item_dx=9.0,
+      item_dy=9.0,
+      size_x=9.0,
+      size_y=9.0,
+      make_tip=standard_volume_tip_with_filter,
+    ),
+    with_tips=with_tips,
+  )
+
+
+@compact_factory
 def hamilton_96_tiprack_300uL_filter(name: str, with_tips: bool = True) -> TipRack:
   """Hamilton cat. no.: 235830 (clear, non-sterile), 235903 (non-sterile), 235938 (sterile)
   Hamilton name: 'STF'
