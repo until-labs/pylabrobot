@@ -13,6 +13,7 @@ import unittest
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.liquid_handling.backends.hamilton.STAR_chatterbox import STARChatterboxBackend
 from pylabrobot.resources.carrier import Coordinate
+from pylabrobot.resources.deck import Deck
 from pylabrobot.resources.hamilton import (
   TIP_CAR_480_A00,
   STARDeck,
@@ -70,6 +71,9 @@ class HamiltonTipAdapterTests(unittest.IsolatedAsyncioTestCase):
     deck = Resource.deserialize_compact(json.loads(json.dumps(deck.serialize_compact())))
     adapter = deck.get_resource("adapter")
     source = deck.get_resource("source")
+    assert isinstance(deck, Deck)
+    assert isinstance(adapter, TipRack)
+    assert isinstance(source, TipRack)
     self.assertTrue(all(not spot.has_tip() for spot in adapter.get_all_items()))
 
     a1 = adapter.get_item("A1")
