@@ -173,35 +173,10 @@ jobs:
           if-no-files-found: error
 
   pypiserver-publish:
-    name: Publish distributions to the internal registry
     needs: build
-    # The registry is available only on the tailnet.
-    runs-on: [tailnet, linux-2c-4g]
-
     permissions:
       contents: read
-
-    steps:
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: ">=0.9.27"
-
-      - name: Download distributions
-        uses: actions/download-artifact@v5
-        with:
-          name: dists
-          path: dist/
-
-      # Publish the tested distributions through the registry's HTTPS endpoint.
-      - name: Publish to pypiserver
-        env:
-          UV_PUBLISH_USERNAME: ${{ secrets.PYPISERVER_UPLOAD_USERNAME }}
-          UV_PUBLISH_PASSWORD: ${{ secrets.PYPISERVER_UPLOAD_PASSWORD }}
-        run: |
-          : "${UV_PUBLISH_USERNAME:?set PYPISERVER_UPLOAD_USERNAME}"
-          : "${UV_PUBLISH_PASSWORD:?set PYPISERVER_UPLOAD_PASSWORD}"
-          uv publish \
-            --publish-url https://artifacts.untillabs.com/python/ \
-            --check-url https://artifacts.untillabs.com/python/simple/ \
-            dist/*
+    uses: until-labs/pylabrobot/.github/workflows/publish-internal.yml@arvind-dev
+    secrets:
+      PYPISERVER_UPLOAD_USERNAME: ${{ secrets.PYPISERVER_UPLOAD_USERNAME }}
+      PYPISERVER_UPLOAD_PASSWORD: ${{ secrets.PYPISERVER_UPLOAD_PASSWORD }}
