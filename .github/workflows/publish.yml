@@ -176,7 +176,7 @@ jobs:
     name: Publish distributions to the internal registry
     needs: build
     # The registry is available only on the tailnet.
-    runs-on: [tailnet]
+    runs-on: [tailnet, linux-2c-4g]
 
     permissions:
       contents: read

@@ -1,0 +1,51 @@
+name: Publish to the internal registry
+
+on:
+  workflow_call:
+    secrets:
+      PYPISERVER_UPLOAD_USERNAME:
+        required: true
+      PYPISERVER_UPLOAD_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish distributions to the internal registry
+    # A reusable workflow can have more than one caller. Check the caller before
+    # GitHub assigns a runner.
+    if: >-
+      github.repository == 'until-labs/pylabrobot' &&
+      ((github.event_name == 'push' &&
+        startsWith(github.workflow_ref, 'until-labs/pylabrobot/.github/workflows/publish.yml@refs/tags/v')) ||
+       (github.event_name == 'workflow_dispatch' &&
+        github.workflow_ref == 'until-labs/pylabrobot/.github/workflows/publish.yml@refs/heads/arvind-dev'))
+    runs-on:
+      group: pylabrobot-publish
+      labels: [tailnet-pylabrobot-publish, linux-2c-4g]
+
+    steps:
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ">=0.9.27"
+
+      - name: Download distributions
+        uses: actions/download-artifact@v5
+        with:
+          name: dists
+          path: dist/
+
+      - name: Publish to pypiserver
+        env:
+          UV_PUBLISH_USERNAME: ${{ secrets.PYPISERVER_UPLOAD_USERNAME }}
+          UV_PUBLISH_PASSWORD: ${{ secrets.PYPISERVER_UPLOAD_PASSWORD }}
+        run: |
+          : "${UV_PUBLISH_USERNAME:?set PYPISERVER_UPLOAD_USERNAME}"
+          : "${UV_PUBLISH_PASSWORD:?set PYPISERVER_UPLOAD_PASSWORD}"
+          uv publish \
+            --publish-url https://artifacts.untillabs.com/python/ \
+            --check-url https://artifacts.untillabs.com/python/simple/ \
+            dist/*
